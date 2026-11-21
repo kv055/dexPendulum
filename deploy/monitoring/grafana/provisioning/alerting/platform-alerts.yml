@@ -1,0 +1,333 @@
+# Grafana-managed platform alert rules (provisioned). In-Grafana only, like the
+# exchange/LND rules: no contact point is configured, so these show in the
+# Alerting UI and alert-list panels but nothing is pushed externally.
+#
+# Each rule targets a failure mode that once left dashboards silently wrong:
+# stale snapshots, dropped scrapes, stale reference prices, disk exhaustion,
+# and dashboard files Grafana refuses to provision.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: platform
+    folder: DEX Alerts
+    interval: 1m
+    rules:
+      - uid: dexarb-snapshot-stale
+        title: Snapshot data stale
+        condition: C
+        for: 10m
+        noDataState: Alerting
+        execErrState: Error
+        isPaused: false
+        labels:
+          severity: critical
+        annotations:
+          summary: "No completed snapshot for {{ $values.A.Value | humanizeDuration }}"
+          description: "unified-snapshot has not written a snapshot_log row for > 15 min (a cycle normally takes ~3 min). Every opportunity metric is stale. Check the Snapshot pipeline dashboard and `docker compose logs unified-snapshot`. NoData alerts too: it means unified-api's collector is not reporting."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'max_over_time(dex_snapshot_age_seconds[5m])'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [900]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                    params: []
+              refId: C
+      - uid: dexarb-scrape-target-down
+        title: Scrape target down
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          severity: warning
+        annotations:
+          summary: "Prometheus cannot scrape {{ $labels.job }}"
+          description: "{{ $labels.job }} ({{ $labels.instance }}) failed most scrapes over 5 min. Its dashboards go blank and any alert on its metrics goes NoData. See the Observability health dashboard."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'avg_over_time(up[5m])'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              conditions:
+                - type: query
+                  evaluator:
+                    type: lt
+                    params: [0.5]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                    params: []
+              refId: C
+      - uid: dexarb-price-feed-stale
+        title: Reference price feed stale
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          severity: warning
+        annotations:
+          summary: "Oldest reference price tick is {{ $values.A.Value | humanizeDuration }} old"
+          description: "A CEX reference price has not ticked for > 5 min; premiums against it are computed on a stale price."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'max(time() - dex_price_last_update_timestamp_seconds)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [300]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                    params: []
+              refId: C
+      - uid: dexarb-disk-full-forecast
+        title: Root disk full within 14 days
+        condition: C
+        for: 1h
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          severity: warning
+        annotations:
+          summary: "Root filesystem projected to fill within 14 days"
+          description: "Linear forecast over the last 24h. Postgres (order_lifecycle has no retention) is the main grower — see Observability health → Capacity runway."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 86400
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'predict_linear(node_filesystem_avail_bytes{mountpoint="/"}[24h], 14 * 86400)'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              conditions:
+                - type: query
+                  evaluator:
+                    type: lt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                    params: []
+              refId: C
+      - uid: dexarb-disk-low
+        title: Root disk below 10% free
+        condition: C
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          severity: critical
+        annotations:
+          summary: "Root filesystem below 10% free"
+          description: "Postgres, Loki and Prometheus share this disk. Free space before Postgres stops accepting writes."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: 'node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              conditions:
+                - type: query
+                  evaluator:
+                    type: lt
+                    params: [0.1]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                    params: []
+              refId: C
+      - uid: dexarb-grafana-provisioning-failing
+        title: Grafana dashboard provisioning failing
+        condition: C
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        isPaused: false
+        labels:
+          severity: warning
+        annotations:
+          summary: "Grafana is refusing to load dashboard files from git"
+          description: "Dashboards in the repo are not what Grafana shows. Usual cause: a dashboard's uid changed while an older copy with the same file name exists. `docker compose logs grafana | grep provisioning` names the files."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: loki
+            model:
+              datasource:
+                type: loki
+                uid: loki
+              editorMode: code
+              expr: 'sum(count_over_time({service="grafana"} |= "failed to save dashboard" [10m]))'
+              instant: true
+              queryType: instant
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: C
+            relativeTimeRange:
+              from: 0
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              conditions:
+                - type: query
+                  evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [C]
+                  reducer:
+                    type: last
+                    params: []
+              refId: C

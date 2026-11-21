@@ -1,0 +1,1161 @@
+{
+ "annotations": {
+  "list": []
+ },
+ "editable": true,
+ "graphTooltip": 1,
+ "schemaVersion": 39,
+ "uid": "dexarb-opportunities",
+ "title": "Arbitrage opportunities — after costs",
+ "description": "Which venues, directions, payment methods and hours produce net-profitable offers, how long they stay up, and how much theoretical profit they represent.",
+ "tags": [
+  "dexarbtrading",
+  "trading",
+  "business",
+  "postgres"
+ ],
+ "timezone": "",
+ "time": {
+  "from": "now-7d",
+  "to": "now"
+ },
+ "refresh": "5m",
+ "templating": {
+  "list": []
+ },
+ "links": [
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "dexarbtrading"
+   ],
+   "asDropdown": true,
+   "includeVars": false,
+   "keepTime": true,
+   "icon": "external link",
+   "targetBlank": false
+  }
+ ],
+ "panels": [
+  {
+   "type": "text",
+   "title": "",
+   "options": {
+    "mode": "markdown",
+    "content": "**Definitions.** *Closed offer* = left the order book in the selected range (`offers.last_seen`). The closed-offer analyzer stores lifetime averages on each offer: *gross premium* vs. reference price, *trade cost* (CEX taker + withdrawal, routing, hedge open/close/funding, DEX fee) and *net premium* = gross − cost. *Theoretical profit* is `avg_estimated_profit_fiat`: what taking the offer at its average size would have earned — an upper bound, since the bot must also win the race to take it. Data source: read-only `postgres-dexarb`."
+   },
+   "id": 1,
+   "gridPos": {
+    "h": 3,
+    "w": 24,
+    "x": 0,
+    "y": 0
+   }
+  },
+  {
+   "id": 2,
+   "type": "row",
+   "title": "Right now",
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 3
+   },
+   "panels": []
+  },
+  {
+   "type": "table",
+   "title": "Best live offers by current net premium",
+   "description": "Live offers ranked by their latest lifecycle row. Positive net % = profitable after all modelled costs.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT o.exchange::text AS exchange, o.direction::text AS direction, ROUND(lc.net_premium_pct::numeric, 2) AS \"net %\", ROUND(lc.premium_pct::numeric, 2) AS \"gross %\", ROUND(lc.trade_cost_pct::numeric, 2) AS \"cost %\", o.price AS price, o.btc_min AS \"btc min\", o.btc_max AS \"btc max\", array_to_string(o.payment_methods, ', ') AS \"payment methods\", o.best_route_cex::text AS \"best route\", ROUND(EXTRACT(EPOCH FROM now() - o.first_seen) / 60) AS \"age min\" FROM offers o CROSS JOIN LATERAL ( SELECT ol.net_premium_pct, ol.premium_pct, ol.trade_cost_pct FROM order_lifecycle ol WHERE ol.offer_db_id = o.id ORDER BY ol.snapshot_time DESC LIMIT 1 ) lc WHERE o.is_live ORDER BY lc.net_premium_pct DESC NULLS LAST LIMIT 25",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "net %"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-background",
+         "mode": "basic"
+        }
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "red",
+           "value": null
+          },
+          {
+           "color": "green",
+           "value": 0
+          }
+         ]
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "thresholds"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    }
+   },
+   "transformations": [],
+   "id": 3,
+   "gridPos": {
+    "h": 9,
+    "w": 24,
+    "x": 0,
+    "y": 4
+   }
+  },
+  {
+   "id": 4,
+   "type": "row",
+   "title": "Closed offers in range",
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 13
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Closed offers",
+   "description": "",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT COUNT(*) AS offers FROM offers WHERE NOT is_live AND $__timeFilter(last_seen)",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 5,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 0,
+    "y": 14
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Net-profitable share",
+   "description": "Of the closed offers the analyzer priced, the share with positive lifetime-average net premium.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT 100.0 * AVG((avg_net_premium_pct > 0)::int) AS share FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct IS NOT NULL",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     },
+     "decimals": 1,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 6,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 4,
+    "y": 14
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Net-profitable offers",
+   "description": "",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT COUNT(*) AS offers FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct > 0",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "text",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 1
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 7,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 8,
+    "y": 14
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Theoretical profit (EUR)",
+   "description": "Upper bound: sum of avg_estimated_profit_fiat over net-profitable closed offers.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT COALESCE(SUM(avg_estimated_profit_fiat), 0) AS eur FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct > 0 AND fiat_currency = 'EUR'",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "currencyEUR",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "text",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 1
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 8,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 12,
+    "y": 14
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Median life of a profitable offer",
+   "description": "How long a profitable offer typically stays in the book — the execution window.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration) AS seconds FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct > 0 AND duration IS NOT NULL",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 9,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 16,
+    "y": 14
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Profitable offers gone < 5 min",
+   "description": "Share of profitable offers that disappeared within ~1.5 snapshot cycles — realistically uncatchable at today's ~3 min snapshot cadence.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT 100.0 * AVG((duration < 300)::int) AS share FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct > 0 AND duration IS NOT NULL",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 25
+       },
+       {
+        "color": "red",
+        "value": 50
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 10,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 20,
+    "y": 14
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Net-profitable offers closed per day, by exchange",
+   "description": "",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "time_series",
+     "rawSql": "SELECT $__timeGroupAlias(last_seen, '1d'), exchange::text AS metric, COUNT(*) AS value FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct > 0 GROUP BY 1, 2 ORDER BY 1",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 1,
+      "fillOpacity": 70,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 11,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 18
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Theoretical profit per day, by exchange (EUR)",
+   "description": "",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "time_series",
+     "rawSql": "SELECT $__timeGroupAlias(last_seen, '1d'), exchange::text AS metric, SUM(avg_estimated_profit_fiat) AS value FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct > 0 AND fiat_currency = 'EUR' GROUP BY 1, 2 ORDER BY 1",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "currencyEUR",
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 1,
+      "fillOpacity": 70,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 12,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 18
+   }
+  },
+  {
+   "type": "barchart",
+   "title": "Where the premium goes — gross vs. cost vs. net (avg %, by market)",
+   "description": "Average over every priced closed offer, not just profitable ones. A market is structurally attractive when its gross premium clears its trade cost.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT exchange::text || ' ' || direction::text AS market, ROUND(AVG(avg_premium_pct)::numeric, 2) AS \"gross premium %\", ROUND(AVG(avg_trade_cost_pct)::numeric, 2) AS \"trade cost %\", ROUND(AVG(avg_net_premium_pct)::numeric, 2) AS \"net premium %\" FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct IS NOT NULL GROUP BY 1 ORDER BY 4 DESC",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "fillOpacity": 80,
+      "lineWidth": 1
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "gross premium %"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "blue"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "trade cost %"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "orange"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "net premium %"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "green"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "orientation": "horizontal",
+    "stacking": "none",
+    "groupWidth": 0.7,
+    "barWidth": 0.9,
+    "showValue": "auto",
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi"
+    },
+    "xTickLabelRotation": 0,
+    "xField": "market"
+   },
+   "id": 13,
+   "gridPos": {
+    "h": 10,
+    "w": 12,
+    "x": 0,
+    "y": 26
+   }
+  },
+  {
+   "type": "table",
+   "title": "Execution window of profitable offers, by market",
+   "description": "How long net-profitable offers lived. Markets with a short p50 need faster snapshots or event-driven taking to be capturable.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT exchange::text AS exchange, direction::text AS direction, COUNT(*) AS offers, ROUND((PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration) / 60.0)::numeric, 1) AS \"p50 min\", ROUND((PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY duration) / 60.0)::numeric, 1) AS \"p90 min\", ROUND(100.0 * AVG((duration < 300)::int)) AS \"% gone < 5 min\", ROUND(AVG(avg_net_premium_pct)::numeric, 2) AS \"avg net %\", ROUND(SUM(avg_estimated_profit_fiat)::numeric) AS \"theoretical EUR\" FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct > 0 AND duration IS NOT NULL GROUP BY 1, 2 ORDER BY offers DESC",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "% gone < 5 min"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-background",
+         "mode": "basic"
+        }
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "green",
+           "value": null
+          },
+          {
+           "color": "orange",
+           "value": 25
+          },
+          {
+           "color": "red",
+           "value": 50
+          }
+         ]
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "thresholds"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    }
+   },
+   "transformations": [],
+   "id": 14,
+   "gridPos": {
+    "h": 10,
+    "w": 12,
+    "x": 12,
+    "y": 26
+   }
+  },
+  {
+   "type": "barchart",
+   "title": "Net-profitable offers by hour of first appearance (UTC)",
+   "description": "When opportunities appear — useful for operator availability and for scheduling faster snapshot cadences.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT LPAD(EXTRACT(HOUR FROM first_seen AT TIME ZONE 'UTC')::int::text, 2, '0') AS hour, COUNT(*) FILTER (WHERE direction = 'bid') AS bid, COUNT(*) FILTER (WHERE direction = 'ask') AS ask FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct > 0 GROUP BY 1 ORDER BY 1",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "fillOpacity": 80,
+      "lineWidth": 1
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "auto",
+    "stacking": "normal",
+    "groupWidth": 0.7,
+    "barWidth": 0.9,
+    "showValue": "auto",
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi"
+    },
+    "xTickLabelRotation": 0,
+    "xField": "hour"
+   },
+   "id": 15,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 36
+   }
+  },
+  {
+   "type": "barchart",
+   "title": "Net-premium distribution of closed offers",
+   "description": "Lifetime-average net premium rounded to whole percent, clamped to ±10%. Mass just below 0% means small fee savings would unlock many offers.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT to_char(bucket, 'S00') || '%' AS \"net premium\", COUNT(*) FILTER (WHERE direction = 'bid') AS bid, COUNT(*) FILTER (WHERE direction = 'ask') AS ask FROM ( SELECT direction, GREATEST(LEAST(ROUND(avg_net_premium_pct)::int, 10), -10) AS bucket FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct IS NOT NULL ) b GROUP BY bucket ORDER BY bucket",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "fillOpacity": 80,
+      "lineWidth": 1
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "orientation": "auto",
+    "stacking": "normal",
+    "groupWidth": 0.7,
+    "barWidth": 0.9,
+    "showValue": "auto",
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi"
+    },
+    "xTickLabelRotation": 0,
+    "xField": "net premium"
+   },
+   "id": 16,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 36
+   }
+  },
+  {
+   "type": "table",
+   "title": "Payment methods of net-profitable offers",
+   "description": "Which fiat rails the profitable offers accept — the rails worth having funded accounts on. An offer listing several methods counts once per method.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT pm AS \"payment method\", COUNT(*) AS offers, ROUND(AVG(o.avg_net_premium_pct)::numeric, 2) AS \"avg net %\", ROUND(SUM(o.avg_estimated_profit_fiat)::numeric) AS \"theoretical EUR\" FROM offers o CROSS JOIN LATERAL unnest(o.payment_methods) AS pm WHERE NOT o.is_live AND $__timeFilter(o.last_seen) AND o.avg_net_premium_pct > 0 GROUP BY 1 ORDER BY offers DESC LIMIT 15",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    }
+   },
+   "transformations": [],
+   "id": 17,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 44
+   }
+  },
+  {
+   "type": "table",
+   "title": "Best CEX route for net-profitable offers",
+   "description": "Which CEX the router picked as cheapest hedge/settlement route. Tells you which venue's fees and account health matter most.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT COALESCE(best_route_cex::text, 'none') AS \"best route\", COUNT(*) AS offers, ROUND(AVG(avg_net_premium_pct)::numeric, 2) AS \"avg net %\", ROUND(SUM(avg_estimated_profit_fiat)::numeric) AS \"theoretical EUR\" FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) AND avg_net_premium_pct > 0 GROUP BY 1 ORDER BY offers DESC",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    }
+   },
+   "transformations": [],
+   "id": 18,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 44
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Closed-offer analysis outcomes per day",
+   "description": "analyzed = priced by the analyzer; non_premium = never above reference price; ignored_no_lifecycle = closed before any lifecycle row was written (too short-lived to observe).",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "time_series",
+     "rawSql": "SELECT $__timeGroupAlias(last_seen, '1d'), COALESCE(historical_analysis_status, 'not analyzed') AS metric, COUNT(*) AS value FROM offers WHERE NOT is_live AND $__timeFilter(last_seen) GROUP BY 1, 2 ORDER BY 1",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 1,
+      "fillOpacity": 70,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 19,
+   "gridPos": {
+    "h": 7,
+    "w": 24,
+    "x": 0,
+    "y": 52
+   }
+  }
+ ]
+}
