@@ -17,8 +17,8 @@ func TestNormalize(t *testing.T) {
 func TestDEXCapabilities(t *testing.T) {
 	for _, currency := range Enabled {
 		if !SupportsDEX("bisq", currency) || !SupportsDEX("hodlhodl", currency) ||
-			!SupportsDEX("mostro", currency) || !SupportsDEX("noones", currency) {
-			t.Fatalf("expected Bisq, HodlHodl, Mostro and Noones to support %s", currency)
+			!SupportsDEX("mostro", currency) {
+			t.Fatalf("expected Bisq, HodlHodl and Mostro to support %s", currency)
 		}
 	}
 	if SupportsDEX("peachbitcoin", "USD") || !SupportsDEX("peachbitcoin", "CHF") {

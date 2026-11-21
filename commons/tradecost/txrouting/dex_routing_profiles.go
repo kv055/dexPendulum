@@ -31,9 +31,6 @@ var dexTxRoutingProfiles = map[string]DexRoutingProfile{
 	"mostro": {Bid: MethodOnChainSwap, Ask: MethodOnChainSwap},
 	// Peach: on-chain P2P with a per-trade escrow address (like HodlHodl) → hub on bid.
 	"peachbitcoin": {Bid: MethodOnChainHubWallet, Ask: MethodOnChainDirect},
-	// Noones: snapshot-only venue; escrow is platform-custodied and payouts go
-	// to per-trade addresses we would not have pre-whitelisted → hub on bid.
-	"noones": {Bid: MethodOnChainHubWallet, Ask: MethodOnChainDirect},
 }
 
 // defaultDexRoutingProfile is used for DEXes not in the matrix: hub on bid (safe for
