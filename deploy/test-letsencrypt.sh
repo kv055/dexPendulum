@@ -10,7 +10,7 @@ make_fixture() {
   local fixture="$tmp_root/$name"
   mkdir -p "$fixture/bin" "$fixture/deploy/nginx"
   cp "$repo_root/deploy/nginx/letsencrypt.sh" "$fixture/deploy/nginx/letsencrypt.sh"
-  printf 'LETSENCRYPT_EMAIL=test@example.invalid\nPUBLIC_HOSTNAME=89.167.10.5\n' > "$fixture/.env"
+  printf 'LETSENCRYPT_EMAIL=test@example.invalid\nPUBLIC_HOSTNAME=203.0.113.10\n' > "$fixture/.env"
 
   cat > "$fixture/bin/docker" <<'EOF'
 #!/usr/bin/env bash
@@ -38,7 +38,7 @@ EOF
 #!/usr/bin/env bash
 set -eu
 if [[ "$*" == *'subjectAltName'* ]]; then
-  printf 'X509v3 Subject Alternative Name:\n    IP Address:89.167.10.5\n'
+  printf 'X509v3 Subject Alternative Name:\n    IP Address:203.0.113.10\n'
 fi
 EOF
   chmod +x "$fixture/bin/"*
@@ -52,7 +52,7 @@ run_fixture() {
     cd "$fixture"
     env PATH="$fixture/bin:$PATH" \
       DEXARB_EDGE_CONFIG="$fixture/missing-edge.env" \
-      EDGE_CERT_TYPE=ip EDGE_CERT_IDENTIFIER=89.167.10.5 \
+      EDGE_CERT_TYPE=ip EDGE_CERT_IDENTIFIER=203.0.113.10 \
       EDGE_HTTP01_WEBROOT="$fixture/deploy/nginx/acme-webroot" \
       DOCKER_LOG="$fixture/docker.log" "$@" \
       bash deploy/nginx/letsencrypt.sh renew

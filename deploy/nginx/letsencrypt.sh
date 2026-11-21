@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Issue or refresh the active public edge certificate and install it for nginx.
 # Run from the repository root on the VPS. Ansible writes /etc/dexarb/edge.env;
-# older hosts fall back to the production hostname values in .env.
+# otherwise PUBLIC_HOSTNAME / LETSENCRYPT_EMAIL from .env are used. There is
+# no built-in default: an unset hostname fails instead of requesting a
+# certificate for someone else's domain.
 set -Eeuo pipefail
 
 action="${1:-renew}"
@@ -22,13 +24,13 @@ if [[ -f "$env_file" ]]; then
 fi
 
 cert_type="${EDGE_CERT_TYPE:-domain}"
-cert_identifier="${EDGE_CERT_IDENTIFIER:-${configured_domain:-dexmonitor.live}}"
+cert_identifier="${EDGE_CERT_IDENTIFIER:-$configured_domain}"
 letsencrypt_email="${LETSENCRYPT_EMAIL:-$configured_email}"
 certbot_image="${CERTBOT_IMAGE:-certbot/certbot:v5.6.0}"
 http01_webroot="${EDGE_HTTP01_WEBROOT:-$PWD/deploy/nginx/acme-webroot}"
 
 [[ -n "$letsencrypt_email" ]] || { echo "LETSENCRYPT_EMAIL must be configured" >&2; exit 2; }
-[[ -n "$cert_identifier" ]] || { echo "EDGE_CERT_IDENTIFIER must be configured" >&2; exit 2; }
+[[ -n "$cert_identifier" ]] || { echo "PUBLIC_HOSTNAME (or EDGE_CERT_IDENTIFIER) must be configured" >&2; exit 2; }
 
 case "$cert_type" in
   ip)
