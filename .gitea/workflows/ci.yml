@@ -36,7 +36,7 @@ jobs:
     name: Secret protection
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Fetch submodules from the Gitea mirror
         run: |
           host="${REGISTRY_URL#*://}"; scheme="${REGISTRY_URL%%://*}"
@@ -93,7 +93,7 @@ jobs:
     needs: security
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Fetch submodules from the Gitea mirror
@@ -185,7 +185,7 @@ jobs:
       build_services_json: ${{ steps.detect.outputs.build_services_json }}
       deploy_main: ${{ steps.deploy.outputs.main }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # Need the push's "before" commit available locally to diff the full
           # pushed range (a push can carry several commits / a merge).
@@ -258,7 +258,7 @@ jobs:
     name: Image detection and deployment regression tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: |
           set -Eeuo pipefail
           bash scripts/test-image-service-inputs.sh
@@ -296,7 +296,7 @@ jobs:
             echo "$MODULE unchanged -> skipping"
           fi
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.check.outputs.run == 'true'
       - name: Fetch submodules from the Gitea mirror
         if: steps.check.outputs.run == 'true'
@@ -309,7 +309,7 @@ jobs:
           REG_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
           OWNER: ${{ github.repository_owner }}
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         if: steps.check.outputs.run == 'true'
         with:
           go-version-file: ${{ matrix.module }}/go.mod
@@ -335,7 +335,7 @@ jobs:
       contains(needs.detect-changes.outputs.changes, 'bisq')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Fetch submodules from the Gitea mirror
         run: |
           host="${REGISTRY_URL#*://}"; scheme="${REGISTRY_URL%%://*}"
@@ -375,7 +375,7 @@ jobs:
     if: needs.detect-changes.outputs.deploy_main != 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Fetch submodules from the Gitea mirror
         run: |
           host="${REGISTRY_URL#*://}"; scheme="${REGISTRY_URL%%://*}"
@@ -386,12 +386,12 @@ jobs:
           REG_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
           OWNER: ${{ github.repository_owner }}
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
           # ~/.npm is a persistent runner volume (see setup-go note in test-go).
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: tools/openapi/go.mod
           # Go/npm caches are persistent volumes the runner mounts into every job
@@ -423,7 +423,7 @@ jobs:
       run:
         working-directory: dexMonitor/react-frontend
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Fetch submodules from the Gitea mirror
         working-directory: ${{ github.workspace }}
         run: |
@@ -435,9 +435,9 @@ jobs:
           REG_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
           OWNER: ${{ github.repository_owner }}
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
           # ~/.npm is a persistent runner volume (see setup-go note above).
 
       - run: npm ci
@@ -463,7 +463,7 @@ jobs:
     if: needs.detect-changes.outputs.deploy_main != 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - run: bash deploy/test-letsencrypt.sh
 
   renovate:
@@ -491,11 +491,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
-      RENOVATE_IMAGE: ghcr.io/renovatebot/renovate:44.239.1
+      RENOVATE_IMAGE: ghcr.io/renovatebot/renovate:44.256.1
       RENOVATE_MIN_INTERVAL_SECONDS: "86400"
       STAMP_FILE: .renovate-last-run
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Restore last-checked stamp
         uses: actions/cache/restore@v4
@@ -649,7 +649,7 @@ jobs:
             echo "$SERVICE unchanged -> skipping build"
           fi
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.check.outputs.build == 'true'
       - name: Fetch submodules from the Gitea mirror
         if: steps.check.outputs.build == 'true'
@@ -902,7 +902,7 @@ jobs:
     # ci-activate polls for up to 120m, plus staging and cleanup headroom.
     timeout-minutes: 140
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # Full history so the commit pushed to the VPS repo carries every object the
           # VPS lacks (git's receive-pack connectivity check needs the ancestry).

@@ -393,7 +393,7 @@ services:
 
   nginx:
     logging: *default-logging
-    image: nginx:1.27-alpine
+    image: nginx:1.31-alpine
     # No edge basic-auth: the application enforces login (dexMonitor session
     # cookie, validated by dexMonitor and unified-api). Stock entrypoint runs nginx.
     volumes:
@@ -422,7 +422,7 @@ services:
   # Run on demand for certificate issuance and from the host renewal timer.
   # nginx serves the shared webroot while Certbot writes ACME challenges to it.
   certbot:
-    image: certbot/certbot:v5.6.0
+    image: certbot/certbot:v5.10.0
     profiles: ["certbot"]
     volumes:
       - ./deploy/nginx/acme-webroot:/var/www/certbot
@@ -763,7 +763,7 @@ services:
 
   prometheus:
     logging: *default-logging
-    image: prom/prometheus:v2.55.1
+    image: prom/prometheus:v3.16.0
     volumes:
       - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -781,7 +781,7 @@ services:
 
   grafana:
     logging: *default-logging
-    image: grafana/grafana:11.3.0
+    image: grafana/grafana:13.3.1
     depends_on:
       - prometheus
     environment:
@@ -808,7 +808,7 @@ services:
 
   node-exporter:
     logging: *default-logging
-    image: prom/node-exporter:v1.8.2
+    image: prom/node-exporter:v1.12.1
     pid: host
     command:
       - --path.rootfs=/host
@@ -824,7 +824,7 @@ services:
 
   cadvisor:
     logging: *default-logging
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
     privileged: true
     volumes:
       - /:/rootfs:ro
@@ -841,7 +841,7 @@ services:
 
   postgres-exporter:
     logging: *default-logging
-    image: prometheuscommunity/postgres-exporter:v0.16.0
+    image: prometheuscommunity/postgres-exporter:v0.20.1
     depends_on:
       postgres:
         condition: service_healthy
@@ -860,7 +860,7 @@ services:
 
   loki:
     logging: *default-logging
-    image: grafana/loki:3.3.2
+    image: grafana/loki:3.7.10
     command:
       - -config.file=/etc/loki/config.yml
     volumes:
@@ -875,6 +875,9 @@ services:
 
   tempo:
     logging: *default-logging
+    # Held on 2.x: Tempo 3 drops the ingester/compactor blocks tempo.yml uses and
+    # refuses to start with it. Migrate the config before lifting the
+    # renovate.json rule that blocks the major bump.
     image: grafana/tempo:2.7.1
     command:
       - -config.file=/etc/tempo/tempo.yml
@@ -892,7 +895,7 @@ services:
 
   alloy:
     logging: *default-logging
-    image: grafana/alloy:v1.5.1
+    image: grafana/alloy:v1.22.0
     command:
       - run
       - /etc/alloy/config.alloy
@@ -918,7 +921,7 @@ services:
   # behind the docs profile and bound to loopback because internal/admin routes
   # are included in the bundled contracts.
   api-docs:
-    image: swaggerapi/swagger-ui:v5.30.1
+    image: swaggerapi/swagger-ui:v5.35.0
     profiles:
       - docs
     environment:

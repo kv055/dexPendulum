@@ -46,7 +46,7 @@ jobs:
       VAR: ${{ matrix.var }}
       COMPOSE_LINES: ${{ matrix.compose_lines }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           # Bump from the integration branch; the bot PR also targets it, so version
           # bumps flow develop -> main through staging like every other change.

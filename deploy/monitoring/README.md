@@ -237,9 +237,9 @@ Prometheus (metrics, unchanged) ─────────────┘
 
 | Service | Image | Role |
 |---|---|---|
-| `loki` | grafana/loki:3.3.2 | Log storage/query (7-day retention) |
-| `tempo` | grafana/tempo:2.7.1 | Trace storage/query, OTLP receiver |
-| `alloy` | grafana/alloy:v1.5.1 | Scrapes container stdout → Loki; receives OTLP → Tempo |
+| `loki` | grafana/loki:3.7.10 | Log storage/query (7-day retention) |
+| `tempo` | grafana/tempo:2.7.1 | Trace storage/query, OTLP receiver (held on 2.x, see docker-compose.yml) |
+| `alloy` | grafana/alloy:v1.22.0 | Scrapes container stdout → Loki; receives OTLP → Tempo |
 
 - **Logs.** Services log structured JSON to stdout (`commons/logging`, built on
   `slog`). Alloy discovers containers via the docker socket, parses the JSON,
