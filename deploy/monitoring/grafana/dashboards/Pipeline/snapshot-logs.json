@@ -1,0 +1,1446 @@
+{
+ "annotations": {
+  "list": []
+ },
+ "editable": true,
+ "graphTooltip": 1,
+ "schemaVersion": 39,
+ "uid": "dexarb-snapshot-logs",
+ "title": "Snapshot pipeline",
+ "description": "The unified-snapshot worker: cycle time, per-venue fetch cost and failures, data quality per source, and what it logs.",
+ "tags": [
+  "dexarbtrading",
+  "snapshot",
+  "logs",
+  "traces"
+ ],
+ "timezone": "",
+ "time": {
+  "from": "now-3h",
+  "to": "now"
+ },
+ "refresh": "1m",
+ "templating": {
+  "list": []
+ },
+ "links": [
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "dexarbtrading"
+   ],
+   "asDropdown": true,
+   "includeVars": false,
+   "keepTime": true,
+   "icon": "external link",
+   "targetBlank": false
+  }
+ ],
+ "panels": [
+  {
+   "id": 1,
+   "type": "row",
+   "title": "Cycle",
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 0
+   },
+   "panels": []
+  },
+  {
+   "type": "stat",
+   "title": "Snapshot age",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "dex_snapshot_age_seconds",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 300
+       },
+       {
+        "color": "red",
+        "value": 600
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 2,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 0,
+    "y": 1
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Last cycle duration",
+   "description": "Wall time of the last full run. The worker is scheduled every SNAPSHOT_INTERVAL_MIN (1 min) but a cycle takes longer, so this is the real data cadence.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "dex_snapshot_cycle_duration_seconds",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 180
+       },
+       {
+        "color": "red",
+        "value": 300
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 3,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 4,
+    "y": 1
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Snapshots in range",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(count_over_time({service=\"unified-snapshot\"} |= \"snapshot complete\" [$__range]))",
+     "refId": "A",
+     "queryType": "instant"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 4,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 8,
+    "y": 1
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Offers in latest snapshot",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "dex_snapshot_last_offers_count",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 5,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 12,
+    "y": 1
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Incomplete venue fetches (range)",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(count_over_time({service=\"unified-snapshot\"} |= \"market offer fetch complete\" | json | status!=\"complete\" [$__range])) or vector(0)",
+     "refId": "A",
+     "queryType": "instant"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 1
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 6,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 16,
+    "y": 1
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Errors logged (range)",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(count_over_time({service=\"unified-snapshot\"} | json | level=\"ERROR\" [$__range])) or vector(0)",
+     "refId": "A",
+     "queryType": "instant"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 7,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 20,
+    "y": 1
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Cycle duration & snapshot age",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "dex_snapshot_cycle_duration_seconds",
+     "refId": "A",
+     "legendFormat": "cycle duration"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "dex_snapshot_age_seconds",
+     "refId": "B",
+     "legendFormat": "snapshot age"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 8,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 5
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Fetch wall time per venue (last run)",
+   "description": "Time the latest run spent fetching each venue (both directions). Stacked ≈ the fetch_offers stage.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "dex_exchange_fetch_duration_seconds",
+     "refId": "A",
+     "legendFormat": "{{exchange}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 50,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 9,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 5
+   }
+  },
+  {
+   "id": 10,
+   "type": "row",
+   "title": "Venues",
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 13
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Slowest single fetch per venue",
+   "description": "From the structured 'market offer fetch complete' events. Tor-routed venues (RoboSats, Peach) dominate.",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "max by (exchange) (max_over_time({service=\"unified-snapshot\"} |= \"market offer fetch complete\" | json | unwrap duration_ms [$__interval]))",
+     "refId": "A",
+     "queryType": "range",
+     "legendFormat": "{{exchange}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "2m",
+   "id": 11,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 14
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Offers per venue (last run)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "dex_exchange_last_offers",
+     "refId": "A",
+     "legendFormat": "{{exchange}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 12,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 14
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Fetch failures per venue (last run)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "dex_exchange_fetch_failures",
+     "refId": "A",
+     "legendFormat": "{{exchange}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 1,
+      "fillOpacity": 70,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 13,
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 0,
+    "y": 22
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "New offers per venue",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum by (exchange) (sum_over_time({service=\"unified-snapshot\"} |~ `\\d+ new,` | regexp `\\[(?P<exchange>[a-z0-9]+)\\] (?P<new>\\d+) new` | unwrap new [$__interval]))",
+     "refId": "A",
+     "queryType": "range",
+     "legendFormat": "{{exchange}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 1,
+      "fillOpacity": 70,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "5m",
+   "id": 14,
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 8,
+    "y": 22
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Updated offers per venue",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum by (exchange) (sum_over_time({service=\"unified-snapshot\"} |~ `\\d+ updated` | regexp `\\[(?P<exchange>[a-z0-9]+)\\] \\d+ new, (?P<updated>\\d+) updated` | unwrap updated [$__interval]))",
+     "refId": "A",
+     "queryType": "range",
+     "legendFormat": "{{exchange}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 1,
+      "fillOpacity": 70,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "5m",
+   "id": 15,
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 16,
+    "y": 22
+   }
+  },
+  {
+   "id": 16,
+   "type": "row",
+   "title": "Source data quality",
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 29
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "RoboSats coordinator responses",
+   "description": "Each coordinator book (currency x side) is polled over Tor. 404 = empty book. Books that answered not_found twice in a row are skipped with a growing back-off (ROBOSATS_EMPTY_BOOK_MAX_SKIP, default 30m), so most empty-book round-trips turn into 'skipped'.",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum by (status) (count_over_time({service=\"unified-snapshot\"} |= \"[Robosats] Found\" | regexp `status=(?P<status>\\d+)` [$__interval]))",
+     "refId": "A",
+     "queryType": "range",
+     "legendFormat": "HTTP {{status}}"
+    },
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(sum_over_time({service=\"unified-snapshot\"} |= \"[Robosats] Skipped\" | regexp `Skipped (?P<n>\\d+) recently` | unwrap n [$__interval]))",
+     "refId": "B",
+     "queryType": "range",
+     "legendFormat": "skipped (recently empty book)"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 1,
+      "fillOpacity": 70,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "5m",
+   "id": 17,
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 0,
+    "y": 30
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Mostro relay events",
+   "description": "NIP-69 order events returned per relay. A relay stuck at 0 (or eose=false) is dead weight in the census.",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum by (relay) (sum_over_time({service=\"unified-snapshot\"} |= \"[Mostro] relay=\" | regexp `relay=(?P<relay>\\S+) events=(?P<events>\\d+)` | unwrap events [$__interval]))",
+     "refId": "A",
+     "queryType": "range",
+     "legendFormat": "{{relay}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 40,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "5m",
+   "id": 18,
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
+    "y": 30
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Rejected source records",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(sum_over_time({service=\"unified-snapshot\"} |= \"[HodlHodl]\" | regexp `unsupported=(?P<v>\\d+)` | unwrap v [$__interval]))",
+     "refId": "A",
+     "queryType": "range",
+     "legendFormat": "HodlHodl unsupported"
+    },
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(sum_over_time({service=\"unified-snapshot\"} |= \"[HodlHodl]\" | regexp `malformed=(?P<v>\\d+)` | unwrap v [$__interval]))",
+     "refId": "B",
+     "queryType": "range",
+     "legendFormat": "HodlHodl malformed"
+    },
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(sum_over_time({service=\"unified-snapshot\"} |= \"[HodlHodl]\" | regexp `duplicates=(?P<v>\\d+)` | unwrap v [$__interval]))",
+     "refId": "C",
+     "queryType": "range",
+     "legendFormat": "HodlHodl duplicates"
+    },
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum by (reason) (count_over_time({service=\"unified-snapshot\"} |= \"NIP-69 quote rejected\" | json [$__interval]))",
+     "refId": "D",
+     "queryType": "range",
+     "legendFormat": "Mostro: {{reason}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 1,
+      "fillOpacity": 70,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "5m",
+   "id": 19,
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 16,
+    "y": 30
+   }
+  },
+  {
+   "id": 20,
+   "type": "row",
+   "title": "Closed-offer analysis & lifecycle",
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 38
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Closed-offer analysis per run",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(sum_over_time({service=\"unified-snapshot\"} |= \"[ClosedAnalysis]\" | regexp `processed=(?P<v>\\d+)` | unwrap v [$__interval]))",
+     "refId": "A",
+     "queryType": "range",
+     "legendFormat": "processed"
+    },
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(sum_over_time({service=\"unified-snapshot\"} |= \"[ClosedAnalysis]\" | regexp `analyzed=(?P<v>\\d+)` | unwrap v [$__interval]))",
+     "refId": "B",
+     "queryType": "range",
+     "legendFormat": "analyzed"
+    },
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(sum_over_time({service=\"unified-snapshot\"} |= \"[ClosedAnalysis]\" | regexp `ignored=(?P<v>\\d+)` | unwrap v [$__interval]))",
+     "refId": "C",
+     "queryType": "range",
+     "legendFormat": "ignored"
+    },
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "sum(sum_over_time({service=\"unified-snapshot\"} |= \"[ClosedAnalysis]\" | regexp `errors=(?P<v>\\d+)` | unwrap v [$__interval]))",
+     "refId": "D",
+     "queryType": "range",
+     "legendFormat": "errors"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "decimals": 0,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "bars",
+      "lineWidth": 1,
+      "fillOpacity": 70,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "interval": "5m",
+   "id": 21,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 39
+   }
+  },
+  {
+   "type": "logs",
+   "title": "Lifecycle write problems & exchange-offline events",
+   "description": "[Lifecycle] insert/persist errors from the snapshot worker, unified-api and dexMonitor, plus stale-grace 'exchange offline' warnings.",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "{service=~\"unified-snapshot|unified-api|dexmonitor\"} |~ `\\[Lifecycle\\] .*(error|fail)|exchange offline`",
+     "refId": "A",
+     "queryType": "range"
+    }
+   ],
+   "options": {
+    "showTime": true,
+    "wrapLogMessage": true,
+    "sortOrder": "Descending",
+    "enableLogDetails": true,
+    "dedupStrategy": "none",
+    "prettifyLogMessage": false
+   },
+   "id": 22,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 39
+   }
+  },
+  {
+   "id": 23,
+   "type": "row",
+   "title": "What the worker complains about",
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 47
+   },
+   "panels": []
+  },
+  {
+   "type": "bargauge",
+   "title": "Top error / warning messages (range)",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "topk(10, sum by (msg) (count_over_time({service=\"unified-snapshot\"} | json | level=~\"ERROR|WARN\" [$__range])))",
+     "refId": "A",
+     "queryType": "instant",
+     "legendFormat": "{{msg}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "orange",
+        "value": null
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "orientation": "horizontal",
+    "displayMode": "basic",
+    "showUnfilled": true,
+    "valueMode": "color",
+    "namePlacement": "auto",
+    "sizing": "auto"
+   },
+   "id": 24,
+   "gridPos": {
+    "h": 9,
+    "w": 8,
+    "x": 0,
+    "y": 48
+   }
+  },
+  {
+   "type": "logs",
+   "title": "Errors & warnings",
+   "description": "",
+   "datasource": {
+    "type": "loki",
+    "uid": "loki"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "expr": "{service=\"unified-snapshot\"} | json | level=~\"ERROR|WARN\"",
+     "refId": "A",
+     "queryType": "range"
+    }
+   ],
+   "options": {
+    "showTime": true,
+    "wrapLogMessage": true,
+    "sortOrder": "Descending",
+    "enableLogDetails": true,
+    "dedupStrategy": "none",
+    "prettifyLogMessage": false
+   },
+   "id": 25,
+   "gridPos": {
+    "h": 9,
+    "w": 16,
+    "x": 8,
+    "y": 48
+   }
+  },
+  {
+   "type": "table",
+   "title": "Recent snapshot runs (Tempo)",
+   "description": "Open a run to see the stage waterfall: fetch_ohlc → fetch_offers (per venue) → write_baseline_lifecycle → settle_closed_offers → analyze_closed_offers.",
+   "datasource": {
+    "type": "tempo",
+    "uid": "tempo"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "tempo",
+      "uid": "tempo"
+     },
+     "queryType": "traceql",
+     "query": "{ name = \"snapshot.run\" }",
+     "tableType": "traces",
+     "limit": 20,
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true
+   },
+   "id": 26,
+   "gridPos": {
+    "h": 8,
+    "w": 24,
+    "x": 0,
+    "y": 57
+   }
+  },
+  {
+   "id": 27,
+   "type": "row",
+   "title": "Raw log stream",
+   "collapsed": true,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 65
+   },
+   "panels": [
+    {
+     "type": "logs",
+     "title": "Raw snapshot log stream",
+     "description": "",
+     "datasource": {
+      "type": "loki",
+      "uid": "loki"
+     },
+     "targets": [
+      {
+       "datasource": {
+        "type": "loki",
+        "uid": "loki"
+       },
+       "expr": "{service=\"unified-snapshot\"}",
+       "refId": "A",
+       "queryType": "range"
+      }
+     ],
+     "options": {
+      "showTime": true,
+      "wrapLogMessage": true,
+      "sortOrder": "Descending",
+      "enableLogDetails": true,
+      "dedupStrategy": "none",
+      "prettifyLogMessage": false
+     },
+     "id": 28,
+     "gridPos": {
+      "h": 12,
+      "w": 24,
+      "x": 0,
+      "y": 66
+     }
+    }
+   ]
+  }
+ ]
+}

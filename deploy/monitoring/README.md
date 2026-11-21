@@ -27,47 +27,82 @@ exporter            exporter    api     (dexMonitor)
 | `prometheus` | prom/prometheus:v2.55.1 | Metrics storage and scraping |
 | `grafana` | grafana/grafana:11.3.0 | Dashboards and visualization |
 | `node-exporter` | prom/node-exporter:v1.8.2 | Host CPU, memory, disk, network metrics |
-| `cadvisor` | gcr.io/cadvisor/cadvisor:v0.49.1 | Per-container resource metrics |
+| `cadvisor` | ghcr.io/google/cadvisor:v0.60.6 | Per-container resource + Docker health metrics (≥ v0.54 needed on Docker's containerd image store) |
 | `postgres-exporter` | prometheuscommunity/postgres-exporter:v0.16.0 | PostgreSQL metrics |
 
-The application services (`unified-api`, `dexmonitor`, `mm-controller`) expose their own `/metrics` endpoints and are scraped directly. `fiat-controller` also serves `/metrics`; its scrape job in `prometheus.yml` is commented out until the compose service is re-enabled.
+The application services (`unified-api`, `dexmonitor`, `mm-controller`, `fiat-controller`) expose their own `/metrics` endpoints and are scraped directly. The observability stack scrapes itself too (`loki`, `tempo`, `alloy`, `grafana` jobs), so a silently broken log/trace pipeline shows up on the *Observability health* dashboard instead of looking like "no errors". Grafana's `/grafana/metrics` is unauthenticated, so the nginx edge 404s it for outside callers.
+
+`unified-api` answers each scrape with live Postgres aggregates (`internal/dbmetrics`), so its job has a 25s `scrape_timeout`; with the 10s default ~2% of scrapes failed and blanked every unified-api series for that sample.
 
 ## Dashboards
 
-Pre-provisioned dashboards live in [grafana/dashboards/](grafana/dashboards/) and are loaded automatically on startup:
+Pre-provisioned dashboards live in [grafana/dashboards/](grafana/dashboards/) and load on startup. Subdirectories become
+Grafana folders (`foldersFromFilesStructure`). Every dashboard has a **Dashboards** dropdown (top right) that lists the rest.
 
-**Start here:** `system-overview.json` is the single-pane golden-signals view; drill
-from it into the logs, traces and domain dashboards below.
+**Start here:** `system-overview.json` is Grafana's home page. For "can the bot trade right now?" open **Trade readiness**;
+when a panel elsewhere says *No data*, check **Observability health** first.
 
-| File | What it shows |
+| Folder / file | What it answers |
 |---|---|
-| `system-overview.json` | Golden signals across metrics + logs in one pane (exchanges up, snapshot age, error rate, latency, recent errors) |
-| `trading-overview.json` | Arbitrage opportunity: best net premium, profitable offers, liquidity, premium distribution |
-| `data-freshness.json` | Snapshot/OHLC age, exchange up/down, price-feed staleness & reconnects |
-| `accounts-and-ws.json` | Trading-account health + live-feed WebSocket clients/broadcasts |
-| `logs-and-errors.json` | **(Loki)** Log volume by level, error/warn rate per service, live error stream — filter by `$service` |
-| `traces-and-latency.json` | **(Tempo + Prom)** Snapshot-run durations, errored spans, HTTP/ingest latency |
-| `go-services.json` | Go runtime + HTTP RED metrics from `unified-api` and `app` |
-| `postgres.json` | PostgreSQL connections, transactions, cache hit rate |
-| `host.json` | Node-exporter host metrics (CPU, RAM, disk, network) |
-| `containers.json` | cAdvisor per-container resource usage |
-| `trading-execution.json` | mm-controller trade engine: order submissions/latency, hedge failures, tradeflow runs & recoveries, realized PnL, LND wallet/balances, Telegram API calls |
-| `business-pnl.json` | **(Postgres)** Realized PnL over time, per-trade PnL, transaction status funnel, fiat push pipeline (status timeline, match latency, recent notifications) |
-| `market-history.json` | **(Postgres)** Net-premium history from `order_lifecycle`, offer appearance/lifetime by exchange, reference price, snapshot cycle duration |
+| `system-overview.json` | Golden signals across metrics + logs (exchanges up, snapshot age, error rate, latency, recent errors) |
+| **Trading/** `trade-readiness.json` | Every precondition of the trade path on one screen: mm-controller / LND gates, account health by category, data freshness, and fail-closed conditions that only show in logs (CEX fee refresh, CEX policy, payment-email reader, phone heartbeat) |
+| **Trading/** `opportunity-analytics.json` | **(Postgres)** Is there money on the table after costs? Best live offers by net premium; closed offers: profitable share, theoretical profit, execution window (how long profitable offers live), gross-vs-cost-vs-net by market, payment methods, best CEX route, hour of day, analyzer outcomes |
+| **Trading/** `trading-overview.json` | Live opportunity gauges: best net premium per direction (bid/ask), profitable offers, liquidity, premium distribution |
+| **Trading/** `trading-execution.json` | mm-controller trade engine: orders, hedge failures, tradeflow runs/recoveries, realized PnL, LND wallet/balances, Telegram API. Counters appear after their first event, so empty panels mean "no trades yet" |
+| **Trading/** `business-pnl.json` | **(Postgres)** Realized PnL, per-trade PnL, transaction status funnel, fiat push pipeline |
+| **Trading/** `market-history.json` | **(Postgres)** Net-premium history from `order_lifecycle`, offer appearance/lifetime, reference price, snapshot cycle (defaults to 24h — `order_lifecycle` is 16M+ rows) |
+| **Trading/** `accounts-and-ws.json` | Trading-account health + live-feed WebSocket clients/broadcasts |
+| **Pipeline/** `snapshot-logs.json` | *Snapshot pipeline*: cycle time vs. schedule, per-venue fetch cost and failures, RoboSats coordinator responses, Mostro relay yield, rejected source records, closed-offer analysis, top worker errors, Tempo runs |
+| **Pipeline/** `data-freshness.json` | Snapshot/OHLC age, exchange up/down, price-feed staleness & reconnects |
+| **Pipeline/** `exchange-health.json` | Exchange up/down with the bisq/bisq2 alert state |
+| **Platform/** `observability-health.json` | Can we trust the dashboards? Scrape health and duration, Grafana provisioning errors, cAdvisor discovery failures, log volume per service and unstructured share, Loki/Tempo/Alloy ingest and drops, disk/DB growth runway |
+| **Platform/** `containers.json` | cAdvisor per compose service: restarts, OOM kills, Docker health, CPU throttling and memory vs. compose limits, PSI pressure, network |
+| **Platform/** `docker-health.json` | Liveness proxies from `up` / `process_start_time_seconds` (predates working cAdvisor; superseded by `containers.json`) |
+| **Platform/** `go-services.json` | Go runtime + HTTP RED per service (filtered on the Prometheus `job` label) |
+| **Platform/** `postgres.json` | Connections, TPS, cache hit ratio, size and growth, disk vs. cache reads, dead tuples |
+| **Platform/** `host.json` | Node-exporter host metrics (CPU, RAM, disk, network) |
+| **Platform/** `logs-and-errors.json` | **(Loki)** Log volume by level, error/warn rate per service, live error stream — filter by `$service` |
+| **Platform/** `traces-and-latency.json` | **(Tempo + Prom)** Snapshot-run durations, errored spans, HTTP/ingest latency per route |
 
 The logs/traces dashboards rely on the `loki` and `tempo` datasources (provisioned in
 [grafana/provisioning/datasources/](grafana/provisioning/datasources/)). `service` is the
 same label across metrics, logs and traces (`unified-api`, `unified-snapshot`,
-`dexmonitor`), so you can pivot between dashboards on one identity.
+`dexmonitor`), so you can pivot between dashboards on one identity. Exceptions: Go
+runtime series (`go_*`, `process_*`) only carry the Prometheus `job` label, and
+mm-controller's HTTP/log `service` is `mmcontroller` while its job is `mm-controller`.
 
-The two **(Postgres)** dashboards query the app schema directly through the read-only
-`postgres-dexarb` datasource (role `dex_grafana_ro`, SELECT-only). unified-api's role
-bootstrap creates the role once `POSTGRES_GRAFANA_RO_PASSWORD` is present in
-`dexUnifiedApi/.env`; the same variable must be in the root `.env` so compose can hand
-it to the grafana container. Until then the datasource shows a connection error and
-everything else keeps working.
+### Postgres datasource
+
+The **(Postgres)** dashboards and the phone-heartbeat tile on *Trade readiness* query the
+app schema through the read-only `postgres-dexarb` datasource (role `dex_grafana_ro`,
+SELECT-only). `POSTGRES_GRAFANA_RO_PASSWORD` lives in **both** encrypted bundles and the
+two values must be identical:
+
+- root `.env.enc` — compose interpolates it into the `grafana` container (datasource login);
+- `dexUnifiedApi/.env.enc` — unified-api's role bootstrap creates/ALTERs `dex_grafana_ro`
+  to this value at every start.
+
+If they drift, the datasource reports `password authentication failed for user
+"dex_grafana_ro"` (SQLSTATE 28P01) and everything else keeps working.
+
+### Editing dashboards
 
 Dashboard updates from the Grafana UI are allowed (`allowUiUpdates: true`). To persist changes back to the repo, export the dashboard JSON from Grafana and overwrite the file.
+
+**Never change the `uid` of an existing file in place.** Grafana keys provisioning by
+file path; if the uid in a provisioned file changes it logs `could not resolve
+dashboards:uid:<new>: Dashboard not found` every 30s and keeps serving the old copy
+forever (and the API refuses to delete provisioned dashboards). Changing a uid *and*
+moving/renaming the file in the same change is safe. `make grafana-validate` (also run in
+CI) checks this against `main`, plus unique uids/titles, known datasource uids, and LogQL
+`"..."` strings with invalid escapes (use backticks for regexes).
+
+### Alerts
+
+Provisioned in [grafana/provisioning/alerting/](grafana/provisioning/alerting/), folder
+*DEX Alerts*: bisq/bisq2 down, LND unsynced, snapshot stale, scrape target down, price
+feed stale, disk full forecast / disk low, and Grafana provisioning failing. No contact
+point is provisioned — they fire in the Grafana UI only.
 
 ## Configuration Files
 

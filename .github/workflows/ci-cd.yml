@@ -330,6 +330,13 @@ jobs:
       - name: Validate compose topology
         run: bash scripts/compose-validate.sh
 
+      - name: Validate Grafana dashboards
+        # uid changes on an already-provisioned dashboard file silently freeze
+        # the live copy (Grafana cannot re-key it), so compare against the base.
+        run: |
+          git fetch --no-tags --depth=1 origin "${GITHUB_BASE_REF}"
+          python3 scripts/validate-grafana-dashboards.py --base FETCH_HEAD
+
   openapi:
     name: OpenAPI source-of-truth check
     needs: security

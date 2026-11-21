@@ -3,12 +3,12 @@
   "list": []
  },
  "editable": true,
- "graphTooltip": 0,
+ "graphTooltip": 1,
  "schemaVersion": 39,
- "title": "Data freshness & exchange health",
+ "title": "Accounts & live feed",
  "tags": [
   "dexarbtrading",
-  "freshness"
+  "accounts"
  ],
  "timezone": "",
  "time": {
@@ -23,7 +23,7 @@
   {
    "id": 1,
    "type": "stat",
-   "title": "Snapshot age (s)",
+   "title": "Healthy accounts",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -36,7 +36,7 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "s",
+     "unit": "short",
      "color": {
       "mode": "thresholds"
      },
@@ -44,16 +44,12 @@
       "mode": "absolute",
       "steps": [
        {
-        "color": "green",
+        "color": "red",
         "value": null
        },
        {
-        "color": "yellow",
-        "value": 120
-       },
-       {
-        "color": "red",
-        "value": 180
+        "color": "green",
+        "value": 1
        }
       ]
      }
@@ -62,7 +58,7 @@
    },
    "targets": [
     {
-     "expr": "dex_snapshot_age_seconds",
+     "expr": "sum(dex_account_healthy)",
      "refId": "A"
     }
    ]
@@ -70,7 +66,7 @@
   {
    "id": 2,
    "type": "stat",
-   "title": "Offers in last snapshot",
+   "title": "Unhealthy accounts",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -91,11 +87,11 @@
       "mode": "absolute",
       "steps": [
        {
-        "color": "red",
+        "color": "green",
         "value": null
        },
        {
-        "color": "green",
+        "color": "red",
         "value": 1
        }
       ]
@@ -105,7 +101,7 @@
    },
    "targets": [
     {
-     "expr": "dex_snapshot_last_offers_count",
+     "expr": "count(dex_account_healthy == 0) or vector(0)",
      "refId": "A"
     }
    ]
@@ -113,7 +109,7 @@
   {
    "id": 3,
    "type": "stat",
-   "title": "OHLC candle age (s)",
+   "title": "Active WS clients",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -126,7 +122,7 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "s",
+     "unit": "short",
      "color": {
       "mode": "thresholds"
      },
@@ -134,16 +130,8 @@
       "mode": "absolute",
       "steps": [
        {
-        "color": "green",
+        "color": "blue",
         "value": null
-       },
-       {
-        "color": "yellow",
-        "value": 180
-       },
-       {
-        "color": "red",
-        "value": 600
        }
       ]
      }
@@ -152,7 +140,7 @@
    },
    "targets": [
     {
-     "expr": "dex_ohlc_age_seconds",
+     "expr": "sum(dex_ws_clients)",
      "refId": "A"
     }
    ]
@@ -160,7 +148,7 @@
   {
    "id": 4,
    "type": "stat",
-   "title": "Exchanges up",
+   "title": "Offers in hub",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -181,7 +169,7 @@
       "mode": "absolute",
       "steps": [
        {
-        "color": "red",
+        "color": "yellow",
         "value": null
        },
        {
@@ -195,7 +183,7 @@
    },
    "targets": [
     {
-     "expr": "sum(dex_exchange_up)",
+     "expr": "sum(dex_live_offers_in_hub)",
      "refId": "A"
     }
    ]
@@ -203,7 +191,7 @@
   {
    "id": 5,
    "type": "state-timeline",
-   "title": "Exchange up/down",
+   "title": "Account health by provider",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -244,8 +232,8 @@
    },
    "targets": [
     {
-     "expr": "dex_exchange_up",
-     "legendFormat": "{{exchange}}",
+     "expr": "dex_account_healthy",
+     "legendFormat": "{{provider}} ({{category}})",
      "refId": "A"
     }
    ]
@@ -253,7 +241,7 @@
   {
    "id": 6,
    "type": "timeseries",
-   "title": "Offers per exchange (last snapshot)",
+   "title": "Time since last health check (s)",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -266,18 +254,18 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "short",
+     "unit": "s",
      "custom": {
       "drawStyle": "line",
-      "fillOpacity": 10
+      "fillOpacity": 0
      }
     },
     "overrides": []
    },
    "targets": [
     {
-     "expr": "dex_exchange_last_offers",
-     "legendFormat": "{{exchange}}",
+     "expr": "dex_account_health_age_seconds",
+     "legendFormat": "{{provider}}",
      "refId": "A"
     }
    ]
@@ -285,7 +273,7 @@
   {
    "id": 7,
    "type": "timeseries",
-   "title": "Price-feed staleness (s since last tick)",
+   "title": "Health-check p95 duration (s)",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -308,16 +296,16 @@
    },
    "targets": [
     {
-     "expr": "time() - dex_price_last_update_timestamp_seconds",
-     "legendFormat": "{{source}}",
+     "expr": "histogram_quantile(0.95, sum by (provider, le) (rate(dex_account_health_check_duration_seconds_bucket[5m])))",
+     "legendFormat": "{{provider}}",
      "refId": "A"
     }
    ]
   },
   {
    "id": 8,
-   "type": "state-timeline",
-   "title": "Price-feed connection up/down",
+   "type": "timeseries",
+   "title": "Health-check failure rate (per min)",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -331,35 +319,17 @@
    "fieldConfig": {
     "defaults": {
      "unit": "short",
-     "min": 0,
-     "max": 1,
-     "color": {
-      "mode": "thresholds"
-     },
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "red",
-        "value": null
-       },
-       {
-        "color": "green",
-        "value": 1
-       }
-      ]
+     "custom": {
+      "drawStyle": "line",
+      "fillOpacity": 10
      }
     },
     "overrides": []
    },
-   "options": {
-    "mergeValues": true,
-    "showValue": "never"
-   },
    "targets": [
     {
-     "expr": "dex_price_feed_up",
-     "legendFormat": "{{source}}",
+     "expr": "sum by (provider) (rate(dex_account_health_checks_total{result=\"fail\"}[5m])) * 60 or on() vector(0)",
+     "legendFormat": "{{provider}} fail",
      "refId": "A"
     }
    ]
@@ -367,7 +337,7 @@
   {
    "id": 9,
    "type": "timeseries",
-   "title": "Price-feed reconnect rate (per min)",
+   "title": "WS subscribers over time",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -390,8 +360,8 @@
    },
    "targets": [
     {
-     "expr": "rate(dex_price_feed_reconnects_total[5m]) * 60",
-     "legendFormat": "{{source}}",
+     "expr": "dex_ws_clients",
+     "legendFormat": "{{service}}",
      "refId": "A"
     }
    ]
@@ -399,7 +369,7 @@
   {
    "id": 10,
    "type": "timeseries",
-   "title": "Snapshot ingest rate (pushes/min)",
+   "title": "WS broadcast rate (per s)",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -422,12 +392,26 @@
    },
    "targets": [
     {
-     "expr": "rate(dex_live_offers_pushed_total[5m]) * 60",
-     "legendFormat": "pushes/min",
+     "expr": "rate(dex_ws_broadcasts_total[5m])",
+     "legendFormat": "broadcasts/s",
      "refId": "A"
     }
    ]
   }
  ],
- "uid": "dexarb-data-freshness"
+ "uid": "dexarb-accounts-ws",
+ "links": [
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "dexarbtrading"
+   ],
+   "asDropdown": true,
+   "includeVars": false,
+   "keepTime": true,
+   "icon": "external link",
+   "targetBlank": false
+  }
+ ]
 }

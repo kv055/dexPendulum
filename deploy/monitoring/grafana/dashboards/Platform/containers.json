@@ -1,0 +1,1260 @@
+{
+ "annotations": {
+  "list": []
+ },
+ "editable": true,
+ "graphTooltip": 1,
+ "schemaVersion": 39,
+ "uid": "dexarb-containers",
+ "title": "Containers — resources & health",
+ "description": "Per compose service, from cAdvisor: restarts, OOM kills, Docker health checks, CPU throttling against limits, memory against limits, pressure and network.",
+ "tags": [
+  "dexarbtrading",
+  "containers",
+  "infrastructure"
+ ],
+ "timezone": "",
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "refresh": "1m",
+ "templating": {
+  "list": [
+   {
+    "name": "service",
+    "label": "service",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "query": {
+     "query": "label_values(container_last_seen, container_label_com_docker_compose_service)",
+     "refId": "StandardVariableQuery"
+    },
+    "definition": "label_values(container_last_seen, container_label_com_docker_compose_service)",
+    "includeAll": true,
+    "multi": true,
+    "allValue": ".*",
+    "current": {
+     "selected": true,
+     "text": [
+      "All"
+     ],
+     "value": [
+      "$__all"
+     ]
+    },
+    "refresh": 2,
+    "sort": 1
+   }
+  ]
+ },
+ "links": [
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "dexarbtrading"
+   ],
+   "asDropdown": true,
+   "includeVars": false,
+   "keepTime": true,
+   "icon": "external link",
+   "targetBlank": false
+  }
+ ],
+ "panels": [
+  {
+   "type": "stat",
+   "title": "Containers running",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "count(container_start_time_seconds{name!=\"\", container_label_com_docker_compose_service=~\"$service\"})",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 1,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 0,
+    "y": 0
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Unhealthy (Docker health check)",
+   "description": "container_health_state: 1 healthy, 0 starting/unhealthy, -1 no health check.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "count(container_health_state{name!=\"\", container_label_com_docker_compose_service=~\"$service\"} == 0) or vector(0)",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 2,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 4,
+    "y": 0
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Restarted in range",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "count(changes(container_start_time_seconds{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[$__range]) > 0) or vector(0)",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 1
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 3,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 8,
+    "y": 0
+   }
+  },
+  {
+   "type": "stat",
+   "title": "OOM kills in range",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(increase(container_oom_events_total{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[$__range])) or vector(0)",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 4,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 12,
+    "y": 0
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Highest memory vs. limit",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(container_memory_working_set_bytes{name!=\"\", container_label_com_docker_compose_service=~\"$service\"} / (container_spec_memory_limit_bytes{name!=\"\", container_label_com_docker_compose_service=~\"$service\"} > 0))",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 0.8
+       },
+       {
+        "color": "red",
+        "value": 0.95
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 5,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 16,
+    "y": 0
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Most CPU-throttled",
+   "description": "Share of CFS periods in which the container hit its CPU quota.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max(rate(container_cpu_cfs_throttled_periods_total{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[5m]) / rate(container_cpu_cfs_periods_total{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[5m]))",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 0.25
+       },
+       {
+        "color": "red",
+        "value": 0.5
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     },
+     "noValue": "no CPU limits"
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 6,
+   "gridPos": {
+    "h": 4,
+    "w": 4,
+    "x": 20,
+    "y": 0
+   }
+  },
+  {
+   "type": "table",
+   "title": "Per-service state now",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (container_label_com_docker_compose_service) (container_health_state{name!=\"\", container_label_com_docker_compose_service=~\"$service\"})",
+     "refId": "A",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{name!=\"\", container_label_com_docker_compose_service=~\"$service\"})",
+     "refId": "B",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}) / sum by (container_label_com_docker_compose_service) (container_spec_memory_limit_bytes{name!=\"\", container_label_com_docker_compose_service=~\"$service\"} > 0)",
+     "refId": "C",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[5m]))",
+     "refId": "D",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "time() - max by (container_label_com_docker_compose_service) (container_start_time_seconds{name!=\"\", container_label_com_docker_compose_service=~\"$service\"})",
+     "refId": "E",
+     "instant": true,
+     "range": false,
+     "format": "table"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "health"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-background",
+         "mode": "basic"
+        }
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "red",
+           "value": null
+          },
+          {
+           "color": "text",
+           "value": -1
+          },
+          {
+           "color": "red",
+           "value": 0
+          },
+          {
+           "color": "green",
+           "value": 1
+          }
+         ]
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "thresholds"
+        }
+       },
+       {
+        "id": "mappings",
+        "value": [
+         {
+          "type": "value",
+          "options": {
+           "1": {
+            "text": "healthy",
+            "color": "green",
+            "index": 0
+           },
+           "0": {
+            "text": "unhealthy",
+            "color": "red",
+            "index": 1
+           },
+           "-1": {
+            "text": "no check",
+            "color": "text",
+            "index": 2
+           }
+          }
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "memory"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "bytes"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "uptime"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "s"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "mem / limit"
+      },
+      "properties": [
+       {
+        "id": "custom.cellOptions",
+        "value": {
+         "type": "color-background",
+         "mode": "basic"
+        }
+       },
+       {
+        "id": "thresholds",
+        "value": {
+         "mode": "absolute",
+         "steps": [
+          {
+           "color": "green",
+           "value": null
+          },
+          {
+           "color": "orange",
+           "value": 0.8
+          },
+          {
+           "color": "red",
+           "value": 0.95
+          }
+         ]
+        }
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "thresholds"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "mem / limit"
+      },
+      "properties": [
+       {
+        "id": "unit",
+        "value": "percentunit"
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    },
+    "sortBy": [
+     {
+      "displayName": "mem / limit",
+      "desc": true
+     }
+    ]
+   },
+   "transformations": [
+    {
+     "id": "merge",
+     "options": {}
+    },
+    {
+     "id": "organize",
+     "options": {
+      "excludeByName": {
+       "Time": true
+      },
+      "renameByName": {
+       "container_label_com_docker_compose_service": "service",
+       "Value #A": "health",
+       "Value #B": "memory",
+       "Value #C": "mem / limit",
+       "Value #D": "cpu cores",
+       "Value #E": "uptime"
+      },
+      "indexByName": {
+       "service": 0,
+       "health": 1,
+       "uptime": 2,
+       "cpu cores": 3,
+       "memory": 4,
+       "mem / limit": 5
+      }
+     }
+    }
+   ],
+   "id": 7,
+   "gridPos": {
+    "h": 9,
+    "w": 24,
+    "x": 0,
+    "y": 4
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "CPU (cores) by service",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_usage_seconds_total{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[$__rate_interval]))",
+     "refId": "A",
+     "legendFormat": "{{container_label_com_docker_compose_service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 8,
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 0,
+    "y": 13
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Memory working set by service",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{name!=\"\", container_label_com_docker_compose_service=~\"$service\"})",
+     "refId": "A",
+     "legendFormat": "{{container_label_com_docker_compose_service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": [
+      "lastNotNull",
+      "max"
+     ]
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 9,
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 12,
+    "y": 13
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Memory vs. limit",
+   "description": "Only services with a compose memory limit. Near 100% means the next spike is an OOM kill.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (container_label_com_docker_compose_service) (container_memory_working_set_bytes{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}) / sum by (container_label_com_docker_compose_service) (container_spec_memory_limit_bytes{name!=\"\", container_label_com_docker_compose_service=~\"$service\"} > 0)",
+     "refId": "A",
+     "legendFormat": "{{container_label_com_docker_compose_service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "transparent",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 0.9
+       }
+      ]
+     },
+     "max": 1,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "thresholdsStyle": {
+       "mode": "line"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 10,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 22
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "CPU throttling (share of periods throttled)",
+   "description": "High values mean the compose `cpus:` limit, not the host, is the bottleneck.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (container_label_com_docker_compose_service) (rate(container_cpu_cfs_throttled_periods_total{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[$__rate_interval])) / sum by (container_label_com_docker_compose_service) (rate(container_cpu_cfs_periods_total{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[$__rate_interval]))",
+     "refId": "A",
+     "legendFormat": "{{container_label_com_docker_compose_service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "max": 1,
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 11,
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 22
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Memory pressure (PSI, waiting s/s)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (container_label_com_docker_compose_service) (rate(container_pressure_memory_waiting_seconds_total{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[$__rate_interval]))",
+     "refId": "A",
+     "legendFormat": "{{container_label_com_docker_compose_service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 12,
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 0,
+    "y": 30
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Network receive by service",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (container_label_com_docker_compose_service) (rate(container_network_receive_bytes_total{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[$__rate_interval]))",
+     "refId": "A",
+     "legendFormat": "{{container_label_com_docker_compose_service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "Bps",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 13,
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
+    "y": 30
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Network transmit by service",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (container_label_com_docker_compose_service) (rate(container_network_transmit_bytes_total{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}[$__rate_interval]))",
+     "refId": "A",
+     "legendFormat": "{{container_label_com_docker_compose_service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "Bps",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 14,
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 16,
+    "y": 30
+   }
+  },
+  {
+   "type": "state-timeline",
+   "title": "Docker health over time",
+   "description": "Services that define a compose healthcheck.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "max by (container_label_com_docker_compose_service) (container_health_state{name!=\"\", container_label_com_docker_compose_service=~\"$service\"}) >= 0",
+     "refId": "A",
+     "legendFormat": "{{container_label_com_docker_compose_service}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 1
+       }
+      ]
+     },
+     "mappings": [
+      {
+       "type": "value",
+       "options": {
+        "1": {
+         "text": "healthy",
+         "color": "green",
+         "index": 0
+        },
+        "0": {
+         "text": "unhealthy",
+         "color": "red",
+         "index": 1
+        }
+       }
+      }
+     ],
+     "color": {
+      "mode": "thresholds"
+     },
+     "custom": {
+      "fillOpacity": 80,
+      "lineWidth": 0
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "showValue": "never",
+    "mergeValues": true,
+    "rowHeight": 0.9,
+    "alignValue": "left",
+    "legend": {
+     "showLegend": false,
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "single"
+    }
+   },
+   "id": 15,
+   "gridPos": {
+    "h": 8,
+    "w": 24,
+    "x": 0,
+    "y": 38
+   }
+  }
+ ]
+}

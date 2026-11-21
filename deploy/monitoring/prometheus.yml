@@ -9,7 +9,34 @@ scrape_configs:
     static_configs:
       - targets: ["localhost:9090"]
 
+  # --- Observability stack self-metrics -------------------------------------
+  # Without these, a silently broken log/trace pipeline (Alloy not shipping,
+  # Loki rejecting, Tempo dropping spans) looks identical to "no errors".
+  - job_name: loki
+    static_configs:
+      - targets: ["loki:3100"]
+
+  - job_name: tempo
+    static_configs:
+      - targets: ["tempo:3200"]
+
+  - job_name: alloy
+    static_configs:
+      - targets: ["alloy:12345"]
+
+  - job_name: grafana
+    # GF_SERVER_SERVE_FROM_SUB_PATH moves every route, /metrics included,
+    # under /grafana. The nginx edge 404s this path for outside callers.
+    metrics_path: /grafana/metrics
+    static_configs:
+      - targets: ["grafana:3000"]
+
   - job_name: unified-api
+    # The dbmetrics collector answers each scrape with live aggregate queries
+    # over offers / order_lifecycle (16M+ rows). Median scrape is ~4s and the
+    # default 10s timeout dropped ~2% of scrapes outright, blanking every
+    # unified-api series for that sample. 25s stays under the 30s interval.
+    scrape_timeout: 25s
     static_configs:
       - targets: ["unified-api:5010"]
 
@@ -33,9 +60,8 @@ scrape_configs:
     static_configs:
       - targets: ["mm-controller:5001"]
 
-  # fiat-controller exposes /metrics on :8080 but the compose service is
-  # currently disabled (commented out in docker-compose.yml). Uncomment this
-  # job together with the service to avoid a permanently-down target.
-  # - job_name: fiat-controller
-  #   static_configs:
-  #     - targets: ["fiat-controller:8080"]
+  # fiat-controller: push-notification pipeline + scraping-connector counters
+  # (dex_fiat_push_pipeline_total, dex_scrape_*), served by the pushpush server.
+  - job_name: fiat-controller
+    static_configs:
+      - targets: ["fiat-controller:8080"]

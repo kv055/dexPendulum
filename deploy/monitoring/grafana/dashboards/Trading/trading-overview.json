@@ -3,12 +3,12 @@
   "list": []
  },
  "editable": true,
- "graphTooltip": 0,
+ "graphTooltip": 1,
  "schemaVersion": 39,
- "title": "Accounts & live feed",
+ "title": "Trading — opportunity overview",
  "tags": [
   "dexarbtrading",
-  "accounts"
+  "trading"
  ],
  "timezone": "",
  "time": {
@@ -23,7 +23,7 @@
   {
    "id": 1,
    "type": "stat",
-   "title": "Healthy accounts",
+   "title": "Best net premium — ask (%)",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -36,7 +36,8 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "short",
+     "unit": "percent",
+     "decimals": 2,
      "color": {
       "mode": "thresholds"
      },
@@ -46,6 +47,10 @@
        {
         "color": "red",
         "value": null
+       },
+       {
+        "color": "yellow",
+        "value": 0
        },
        {
         "color": "green",
@@ -58,15 +63,16 @@
    },
    "targets": [
     {
-     "expr": "sum(dex_account_healthy)",
+     "expr": "dex_best_net_premium_pct{direction=\"ask\"}",
      "refId": "A"
     }
-   ]
+   ],
+   "description": "Best live net premium on ask offers (makers selling BTC; we buy on the DEX). Was direction=\"sell\" before the bid/ask enum rename, which left this tile empty."
   },
   {
    "id": 2,
    "type": "stat",
-   "title": "Unhealthy accounts",
+   "title": "Best net premium — bid (%)",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -79,7 +85,8 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "short",
+     "unit": "percent",
+     "decimals": 2,
      "color": {
       "mode": "thresholds"
      },
@@ -87,11 +94,15 @@
       "mode": "absolute",
       "steps": [
        {
-        "color": "green",
+        "color": "red",
         "value": null
        },
        {
-        "color": "red",
+        "color": "yellow",
+        "value": 0
+       },
+       {
+        "color": "green",
         "value": 1
        }
       ]
@@ -101,15 +112,16 @@
    },
    "targets": [
     {
-     "expr": "count(dex_account_healthy == 0) or vector(0)",
+     "expr": "dex_best_net_premium_pct{direction=\"bid\"}",
      "refId": "A"
     }
-   ]
+   ],
+   "description": "Best live net premium on bid offers (makers buying BTC; we sell on the DEX)."
   },
   {
    "id": 3,
    "type": "stat",
-   "title": "Active WS clients",
+   "title": "Net-profitable offers (now)",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -130,8 +142,12 @@
       "mode": "absolute",
       "steps": [
        {
-        "color": "blue",
+        "color": "red",
         "value": null
+       },
+       {
+        "color": "green",
+        "value": 1
        }
       ]
      }
@@ -140,7 +156,7 @@
    },
    "targets": [
     {
-     "expr": "sum(dex_ws_clients)",
+     "expr": "sum(dex_net_profitable_offers)",
      "refId": "A"
     }
    ]
@@ -148,7 +164,7 @@
   {
    "id": 4,
    "type": "stat",
-   "title": "Offers in hub",
+   "title": "Live offers (total)",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -183,15 +199,15 @@
    },
    "targets": [
     {
-     "expr": "sum(dex_live_offers_in_hub)",
+     "expr": "sum(dex_live_offers)",
      "refId": "A"
     }
    ]
   },
   {
    "id": 5,
-   "type": "state-timeline",
-   "title": "Account health by provider",
+   "type": "timeseries",
+   "title": "Net-profitable offers over time",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -205,35 +221,17 @@
    "fieldConfig": {
     "defaults": {
      "unit": "short",
-     "min": 0,
-     "max": 1,
-     "color": {
-      "mode": "thresholds"
-     },
-     "thresholds": {
-      "mode": "absolute",
-      "steps": [
-       {
-        "color": "red",
-        "value": null
-       },
-       {
-        "color": "green",
-        "value": 1
-       }
-      ]
+     "custom": {
+      "drawStyle": "line",
+      "fillOpacity": 10
      }
     },
     "overrides": []
    },
-   "options": {
-    "mergeValues": true,
-    "showValue": "never"
-   },
    "targets": [
     {
-     "expr": "dex_account_healthy",
-     "legendFormat": "{{provider}} ({{category}})",
+     "expr": "dex_net_profitable_offers",
+     "legendFormat": "{{direction}}",
      "refId": "A"
     }
    ]
@@ -241,7 +239,7 @@
   {
    "id": 6,
    "type": "timeseries",
-   "title": "Time since last health check (s)",
+   "title": "Best net premium over time (%)",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -254,7 +252,7 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "s",
+     "unit": "percent",
      "custom": {
       "drawStyle": "line",
       "fillOpacity": 0
@@ -264,8 +262,8 @@
    },
    "targets": [
     {
-     "expr": "dex_account_health_age_seconds",
-     "legendFormat": "{{provider}}",
+     "expr": "dex_best_net_premium_pct",
+     "legendFormat": "best {{direction}}",
      "refId": "A"
     }
    ]
@@ -273,7 +271,7 @@
   {
    "id": 7,
    "type": "timeseries",
-   "title": "Health-check p95 duration (s)",
+   "title": "Live offers by exchange & direction",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -286,7 +284,42 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "s",
+     "unit": "short",
+     "custom": {
+      "drawStyle": "bars",
+      "fillOpacity": 60,
+      "stacking": {
+       "mode": "normal"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "expr": "dex_live_offers",
+     "legendFormat": "{{exchange}} {{direction}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "type": "timeseries",
+   "title": "Net premium distribution (avg / p50 / p90)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 12
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
      "custom": {
       "drawStyle": "line",
       "fillOpacity": 0
@@ -296,40 +329,8 @@
    },
    "targets": [
     {
-     "expr": "histogram_quantile(0.95, sum by (provider, le) (rate(dex_account_health_check_duration_seconds_bucket[5m])))",
-     "legendFormat": "{{provider}}",
-     "refId": "A"
-    }
-   ]
-  },
-  {
-   "id": 8,
-   "type": "timeseries",
-   "title": "Health-check failure rate (per min)",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 12,
-    "y": 12
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 10
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "expr": "rate(dex_account_health_checks_total{result=\"fail\"}[5m]) * 60",
-     "legendFormat": "{{provider}} fail",
+     "expr": "dex_live_offer_net_premium_pct",
+     "legendFormat": "{{direction}} {{stat}}",
      "refId": "A"
     }
    ]
@@ -337,7 +338,7 @@
   {
    "id": 9,
    "type": "timeseries",
-   "title": "WS subscribers over time",
+   "title": "Available BTC liquidity by exchange",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -350,18 +351,22 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "short",
+     "unit": "none",
+     "decimals": 4,
      "custom": {
       "drawStyle": "line",
-      "fillOpacity": 10
+      "fillOpacity": 20,
+      "stacking": {
+       "mode": "normal"
+      }
      }
     },
     "overrides": []
    },
    "targets": [
     {
-     "expr": "dex_ws_clients",
-     "legendFormat": "{{service}}",
+     "expr": "sum by (exchange) (dex_live_offer_btc_liquidity)",
+     "legendFormat": "{{exchange}}",
      "refId": "A"
     }
    ]
@@ -369,7 +374,7 @@
   {
    "id": 10,
    "type": "timeseries",
-   "title": "WS broadcast rate (per s)",
+   "title": "BTC reference price by source",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -382,22 +387,36 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "short",
+     "unit": "currencyEUR",
      "custom": {
       "drawStyle": "line",
-      "fillOpacity": 10
+      "fillOpacity": 0
      }
     },
     "overrides": []
    },
    "targets": [
     {
-     "expr": "rate(dex_ws_broadcasts_total[5m])",
-     "legendFormat": "broadcasts/s",
+     "expr": "dex_price_current",
+     "legendFormat": "{{source}}",
      "refId": "A"
     }
    ]
   }
  ],
- "uid": "dexarb-accounts-ws"
+ "uid": "dexarb-trading-overview",
+ "links": [
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "dexarbtrading"
+   ],
+   "asDropdown": true,
+   "includeVars": false,
+   "keepTime": true,
+   "icon": "external link",
+   "targetBlank": false
+  }
+ ]
 }

@@ -21,7 +21,7 @@ DEADCODE_VERSION := v0.52.0
 
 .DEFAULT_GOAL := help
 .PHONY: help staging-up staging-wait staging-down staging-logs staging-rebuild staging-ps staging-env-check staging-migrate \
-	prune docker-reclaim sonar-up sonar-scan sonar-down sonar-reset compose-validate backend-tools backend-check \
+	prune docker-reclaim sonar-up sonar-scan sonar-down sonar-reset compose-validate grafana-validate backend-tools backend-check \
 	api-install api-bundle api-lint api-route-check api-generate api-check api-contract-test
 
 help: ## Show this help
@@ -77,6 +77,9 @@ staging-logs: ## Tail logs from the local stack
 
 compose-validate: ## Assert docker-compose topology (no host networking, DNS-based service wiring)
 	@bash scripts/compose-validate.sh
+
+grafana-validate: ## Lint provisioned Grafana dashboards (uids, datasources, LogQL escapes, uid changes vs main)
+	@python3 scripts/validate-grafana-dashboards.py --base main
 
 backend-tools: ## Install pinned backend maintainability tools under /tmp
 	@mkdir -p $(BACKEND_TOOLS_DIR)

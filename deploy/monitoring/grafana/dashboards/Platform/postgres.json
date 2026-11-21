@@ -1,0 +1,508 @@
+{
+ "annotations": {
+  "list": []
+ },
+ "editable": true,
+ "schemaVersion": 39,
+ "title": "Postgres",
+ "tags": [
+  "dexarbtrading",
+  "postgres"
+ ],
+ "time": {
+  "from": "now-1h",
+  "to": "now"
+ },
+ "refresh": "30s",
+ "panels": [
+  {
+   "id": 1,
+   "type": "timeseries",
+   "title": "Active connections",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 0
+   },
+   "targets": [
+    {
+     "expr": "sum by (datname) (pg_stat_activity_count)",
+     "legendFormat": "{{datname}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "type": "timeseries",
+   "title": "Transactions per second",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 0
+   },
+   "targets": [
+    {
+     "expr": "sum by (datname) (rate(pg_stat_database_xact_commit[1m]))",
+     "legendFormat": "commit {{datname}}",
+     "refId": "A"
+    },
+    {
+     "expr": "sum by (datname) (rate(pg_stat_database_xact_rollback[1m]))",
+     "legendFormat": "rollback {{datname}}",
+     "refId": "B"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "type": "timeseries",
+   "title": "Cache hit ratio",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 8
+   },
+   "targets": [
+    {
+     "expr": "sum by (datname) (rate(pg_stat_database_blks_hit[5m])) / (sum by (datname) (rate(pg_stat_database_blks_hit[5m])) + sum by (datname) (rate(pg_stat_database_blks_read[5m])))",
+     "legendFormat": "{{datname}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "type": "stat",
+   "title": "Postgres up",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 8
+   },
+   "targets": [
+    {
+     "expr": "pg_up",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "type": "stat",
+   "title": "Database size",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "pg_database_size_bytes{datname=\"dexarb\"}",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "area",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 5,
+   "gridPos": {
+    "x": 0,
+    "y": 16,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Growth / day",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "deriv(pg_database_size_bytes{datname=\"dexarb\"}[24h]) * 86400",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "orange",
+        "value": 100000000.0
+       },
+       {
+        "color": "red",
+        "value": 500000000.0
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 6,
+   "gridPos": {
+    "x": 6,
+    "y": 16,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Disk blocks read / s (1h avg)",
+   "description": "8 KiB blocks served from disk instead of shared_buffers. Sustained thousands/s = working set exceeds memory.",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "rate(pg_stat_database_blks_read{datname=\"dexarb\"}[1h])",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 7,
+   "gridPos": {
+    "x": 12,
+    "y": 16,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Dead tuples (order_lifecycle)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "pg_stat_user_tables_n_dead_tup{relname=\"order_lifecycle\"}",
+     "refId": "A",
+     "instant": true,
+     "range": false
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     },
+     "decimals": 0,
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "fields": "",
+     "values": false
+    },
+    "colorMode": "background",
+    "graphMode": "none",
+    "justifyMode": "center",
+    "textMode": "auto",
+    "orientation": "auto"
+   },
+   "id": 8,
+   "gridPos": {
+    "x": 18,
+    "y": 16,
+    "w": 6,
+    "h": 4
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Disk vs. cache block reads",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(rate(pg_stat_database_blks_read{datname=\"dexarb\"}[5m]))",
+     "refId": "A",
+     "legendFormat": "from disk"
+    },
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum(rate(pg_stat_database_blks_hit{datname=\"dexarb\"}[5m]))",
+     "refId": "B",
+     "legendFormat": "from cache"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      },
+      "scaleDistribution": {
+       "type": "log",
+       "log": 10
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 9,
+   "gridPos": {
+    "x": 0,
+    "y": 20,
+    "w": 12,
+    "h": 8
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Dead tuples by table (top 8)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "topk(8, pg_stat_user_tables_n_dead_tup{datname=\"dexarb\"})",
+     "refId": "A",
+     "legendFormat": "{{relname}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 10,
+   "gridPos": {
+    "x": 12,
+    "y": 20,
+    "w": 12,
+    "h": 8
+   }
+  }
+ ],
+ "uid": "dexarb-postgres",
+ "links": [
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "dexarbtrading"
+   ],
+   "asDropdown": true,
+   "includeVars": false,
+   "keepTime": true,
+   "icon": "external link",
+   "targetBlank": false
+  }
+ ],
+ "graphTooltip": 1
+}
