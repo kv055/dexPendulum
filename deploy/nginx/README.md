@@ -38,8 +38,8 @@ are all host-local and gitignored.
 Required production `.env` values:
 
 ```dotenv
-PUBLIC_HOSTNAME=dexmonitor.live
-LETSENCRYPT_EMAIL=info@dexmonitor.live
+PUBLIC_HOSTNAME=dex.example.com
+LETSENCRYPT_EMAIL=admin@example.com
 ```
 
 ## Authentication — application login (no edge basic auth)
