@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"time"
 
+	"commons/httproute"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -71,14 +73,20 @@ func (s *ServiceRegistry) Handler() http.Handler {
 // The route label comes from http.Request.Pattern (Go 1.22+ ServeMux), not the
 // raw URL path — this keeps label cardinality bounded when handlers use path
 // parameters like "/api/trading/accounts/{id}".
+//
+// When context-replacing middleware (session loaders, auth gates) sits between
+// this middleware and the mux, the mux sets Pattern on a request copy this
+// layer never sees. httproute bridges that gap: tracing.RouteNamer (innermost,
+// next to the mux) records the pattern into a slot carried by the context.
 func (s *ServiceRegistry) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 
+		r, matched := httproute.Capture(r)
 		next.ServeHTTP(rec, r)
 
-		route := r.Pattern
+		route := matched()
 		if route == "" {
 			route = "unmatched"
 		}
