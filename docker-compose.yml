@@ -300,11 +300,6 @@ services:
       # Skip coordinator books that keep answering not_found for up to this long
       # (~2/3 of coordinator calls were empty books, each a Tor round-trip).
       - ROBOSATS_EMPTY_BOOK_MAX_SKIP=${ROBOSATS_EMPTY_BOOK_MAX_SKIP:-30m}
-      # Snapshot-only Noones ingestion (offer/all book + inline maker
-      # reputation; no taker connector). Empty credentials keep the venue out
-      # of the fetcher list entirely instead of failing every market.
-      - NOONES_CLIENT_ID=${NOONES_CLIENT_ID:-}
-      - NOONES_CLIENT_SECRET=${NOONES_CLIENT_SECRET:-}
       # OpenTelemetry: traces -> Alloy -> Tempo; structured logs scraped from stdout.
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-alloy:4317}
       - OTEL_SERVICE_NAME=unified-snapshot

@@ -82,8 +82,6 @@ func TestMethodForMatrix(t *testing.T) {
 		{"mostro", SideAsk, MethodOnChainSwap},
 		{"peachbitcoin", SideBid, MethodOnChainHubWallet},
 		{"peachbitcoin", SideAsk, MethodOnChainDirect},
-		{"noones", SideBid, MethodOnChainHubWallet},
-		{"noones", SideAsk, MethodOnChainDirect},
 		// Unknown DEX falls back to the safe default (hub on bid, direct on ask).
 		{"someother", SideBid, MethodOnChainHubWallet},
 		{"someother", SideAsk, MethodOnChainDirect},
