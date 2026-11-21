@@ -272,6 +272,9 @@ services:
       - BISQ2_REST_HOST=bisq2:8090
       - BISQ2_API_PASSWORD=${BISQ2_API_PASSWORD:-}
       - PRICE_PROVIDER=bisq_tor
+      # Not a schedule (one cycle per process, back to back, ~3 min each): only
+      # the floor of the closed-offer grace window, which counts completed
+      # snapshot_log cycles. Shared with dexMonitor's default candle interval.
       - SNAPSHOT_INTERVAL_MIN=${SNAPSHOT_INTERVAL_MIN:-1}
       # Failed source fetches retain their last confirmed offers for this grace;
       # a successful snapshot still removes absent offers immediately.
@@ -280,7 +283,9 @@ services:
       # Drop order_lifecycle rows older than this many days. 0 disables the
       # sweep. Batched with a per-cycle time budget so a 47M-row backlog drains
       # across several snapshot passes instead of stalling one cycle.
-      - LIFECYCLE_RETENTION_DAYS=${LIFECYCLE_RETENTION_DAYS:-30}
+      # Steady state is ~days x 1.4M rows (Nov 2026 inflow): 30 days ≈ 42M rows
+      # outgrows the VPS disk, 14 days ≈ 20M. dexMonitor reads at most 7 days.
+      - LIFECYCLE_RETENTION_DAYS=${LIFECYCLE_RETENTION_DAYS:-14}
       # A full eight-currency pass can exceed three minutes while Tor-backed
       # sources time out. Keep the worker healthy throughout a valid pass.
       - SNAPSHOT_HEALTH_MAX_AGE_SEC=900
@@ -292,6 +297,9 @@ services:
       # list into the snapshot image. The worker falls back safely on failure.
       - ROBOSATS_FEDERATION_URL=${ROBOSATS_FEDERATION_URL:-https://raw.githubusercontent.com/RoboSats/robosats/main/frontend/static/federation.json}
       - ROBOSATS_FEDERATION_REFRESH_INTERVAL=${ROBOSATS_FEDERATION_REFRESH_INTERVAL:-6h}
+      # Skip coordinator books that keep answering not_found for up to this long
+      # (~2/3 of coordinator calls were empty books, each a Tor round-trip).
+      - ROBOSATS_EMPTY_BOOK_MAX_SKIP=${ROBOSATS_EMPTY_BOOK_MAX_SKIP:-30m}
       # Snapshot-only Noones ingestion (offer/all book + inline maker
       # reputation; no taker connector). Empty credentials keep the venue out
       # of the fetcher list entirely instead of failing every market.
