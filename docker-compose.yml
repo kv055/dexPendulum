@@ -732,7 +732,7 @@ services:
   # afterwards. Runs with only CHOWN and no network.
   fiat-controller-data-init:
     logging: *default-logging
-    image: alpine:3.21
+    image: alpine:3.24
     command: ["chown", "-R", "10001:10001", "/data"]
     volumes:
       - fiat-controller-data:/data
@@ -929,7 +929,7 @@ services:
 
   postgres-exporter:
     logging: *default-logging
-    image: prometheuscommunity/postgres-exporter:v0.20.1
+    image: prometheuscommunity/postgres-exporter:v0.21.1
     depends_on:
       postgres:
         condition: service_healthy
