@@ -3,7 +3,7 @@
   "list": []
  },
  "editable": true,
- "graphTooltip": 0,
+ "graphTooltip": 1,
  "schemaVersion": 39,
  "uid": "dexarb-trading-execution",
  "title": "Trading execution & PnL",
@@ -104,7 +104,7 @@
    },
    "targets": [
     {
-     "expr": "sum(dex_transactions_total)",
+     "expr": "sum(dex_transactions_total) or vector(0)",
      "refId": "A"
     }
    ]
@@ -148,7 +148,7 @@
    },
    "targets": [
     {
-     "expr": "sum(increase(dex_hedge_failures_total[$__range]))",
+     "expr": "sum(increase(dex_hedge_failures_total[$__range])) or vector(0)",
      "refId": "A"
     }
    ]
@@ -300,10 +300,11 @@
    },
    "targets": [
     {
-     "expr": "sum(dex_lnd_channels{active=\"true\"})",
+     "expr": "sum(dex_lnd_channels{active=\"true\"}) or (dex_lnd_wallet_up == 0) * 0",
      "refId": "A"
     }
-   ]
+   ],
+   "description": "Active channels. Channel/balance series are only exported while the wallet is up; reads 0 when the wallet is down."
   },
   {
    "id": 7,
@@ -347,7 +348,8 @@
      "expr": "sum by (venue, kind, result) (increase(dex_orders_placed_total[$__rate_interval]))",
      "legendFormat": "{{venue}} {{kind}} {{result}}"
     }
-   ]
+   ],
+   "description": "Counters appear after their first event — an empty panel here means no trade activity yet, not a broken query."
   },
   {
    "id": 8,
@@ -440,7 +442,8 @@
      "expr": "sum by (path, result) (increase(dex_tradeflow_recoveries_total[$__rate_interval]))",
      "legendFormat": "recovery {{path}} {{result}}"
     }
-   ]
+   ],
+   "description": "Counters appear after their first event — an empty panel here means no trade activity yet, not a broken query."
   },
   {
    "id": 10,
@@ -528,7 +531,8 @@
      "expr": "sum by (stream) (increase(dex_ws_reconnects_total[$__rate_interval]))",
      "legendFormat": "{{stream}}"
     }
-   ]
+   ],
+   "description": "Counters appear after their first event — an empty panel here means no trade activity yet, not a broken query."
   },
   {
    "id": 12,
@@ -621,7 +625,8 @@
      "expr": "dex_lnd_channel_balance_sat",
      "legendFormat": "channel {{side}}"
     }
-   ]
+   ],
+   "description": "Only exported while dex_lnd_wallet_up == 1."
   },
   {
    "id": 14,
@@ -666,6 +671,20 @@
      "legendFormat": "{{service}} {{result}}"
     }
    ]
+  }
+ ],
+ "links": [
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "dexarbtrading"
+   ],
+   "asDropdown": true,
+   "includeVars": false,
+   "keepTime": true,
+   "icon": "external link",
+   "targetBlank": false
   }
  ]
 }

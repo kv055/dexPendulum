@@ -1,0 +1,320 @@
+{
+ "annotations": {
+  "list": []
+ },
+ "editable": true,
+ "graphTooltip": 1,
+ "schemaVersion": 39,
+ "title": "Go services — RED + runtime",
+ "tags": [
+  "dexarbtrading",
+  "go"
+ ],
+ "timezone": "",
+ "time": {
+  "from": "now-1h",
+  "to": "now"
+ },
+ "refresh": "30s",
+ "templating": {
+  "list": [
+   {
+    "name": "job",
+    "label": "service",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "prometheus"
+    },
+    "query": {
+     "query": "label_values(up, job)",
+     "refId": "StandardVariableQuery"
+    },
+    "definition": "label_values(up, job)",
+    "regex": "/^(unified-api|dexmonitor|mm-controller|fiat-controller)$/",
+    "includeAll": true,
+    "multi": true,
+    "allValue": "unified-api|dexmonitor|mm-controller|fiat-controller",
+    "current": {
+     "selected": true,
+     "text": [
+      "All"
+     ],
+     "value": [
+      "$__all"
+     ]
+    },
+    "refresh": 2,
+    "sort": 1
+   }
+  ]
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "timeseries",
+   "title": "Request rate (req/s)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 0
+   },
+   "targets": [
+    {
+     "expr": "sum by (job, route) (rate(http_requests_total{job=~\"$job\"}[$__rate_interval]))",
+     "legendFormat": "{{job}} {{route}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "type": "timeseries",
+   "title": "Error rate (5xx, req/s)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 0
+   },
+   "targets": [
+    {
+     "expr": "sum by (job, route) (rate(http_requests_total{job=~\"$job\",status=~\"5..\"}[$__rate_interval]))",
+     "legendFormat": "{{job}} {{route}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "type": "timeseries",
+   "title": "p95 latency (s)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 8
+   },
+   "targets": [
+    {
+     "expr": "histogram_quantile(0.95, sum by (job, route, le) (rate(http_request_duration_seconds_bucket{job=~\"$job\",route!~\".*/ws.*\"}[5m])))",
+     "legendFormat": "{{job}} {{route}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "type": "timeseries",
+   "title": "Goroutines",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 8
+   },
+   "targets": [
+    {
+     "expr": "go_goroutines{job=~\"$job\"}",
+     "legendFormat": "{{job}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "type": "timeseries",
+   "title": "Heap in use (bytes)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 0,
+    "y": 16
+   },
+   "targets": [
+    {
+     "expr": "go_memstats_heap_inuse_bytes{job=~\"$job\"}",
+     "legendFormat": "{{job}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "type": "timeseries",
+   "title": "Process RSS (bytes)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 12,
+    "x": 12,
+    "y": 16
+   },
+   "targets": [
+    {
+     "expr": "process_resident_memory_bytes{job=~\"$job\"}",
+     "legendFormat": "{{job}}",
+     "refId": "A"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Requests by status class",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "sum by (job, code) (label_replace(rate(http_requests_total{job=~\"$job\"}[$__rate_interval]), \"code\", \"${1}xx\", \"status\", \"(.)..\"))",
+     "refId": "A",
+     "legendFormat": "{{job}} {{code}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "reqps",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 40,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "normal",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 7,
+   "gridPos": {
+    "x": 0,
+    "y": 24,
+    "w": 12,
+    "h": 8
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "GC pause p75 (s)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     },
+     "expr": "go_gc_duration_seconds{job=~\"$job\", quantile=\"0.75\"}",
+     "refId": "A",
+     "legendFormat": "{{job}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "color": {
+      "mode": "palette-classic"
+     },
+     "custom": {
+      "drawStyle": "line",
+      "lineWidth": 1,
+      "fillOpacity": 10,
+      "showPoints": "never",
+      "spanNulls": false,
+      "stacking": {
+       "mode": "none",
+       "group": "A"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true,
+     "calcs": []
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "id": 8,
+   "gridPos": {
+    "x": 12,
+    "y": 24,
+    "w": 12,
+    "h": 8
+   }
+  }
+ ],
+ "uid": "dexarb-go-services",
+ "description": "Go runtime + HTTP RED for the Go services. Filtered on the Prometheus `job` label: go_*/process_* series have no `service` label, and the HTTP const label differs from the job for mm-controller (`mmcontroller`). WebSocket routes are excluded from latency — their duration is the connection lifetime.",
+ "links": [
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "dexarbtrading"
+   ],
+   "asDropdown": true,
+   "includeVars": false,
+   "keepTime": true,
+   "icon": "external link",
+   "targetBlank": false
+  }
+ ]
+}

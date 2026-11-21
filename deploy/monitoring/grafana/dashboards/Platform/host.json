@@ -114,5 +114,20 @@
    ]
   }
  ],
- "uid": "dexarb-host"
+ "uid": "dexarb-host",
+ "links": [
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "dexarbtrading"
+   ],
+   "asDropdown": true,
+   "includeVars": false,
+   "keepTime": true,
+   "icon": "external link",
+   "targetBlank": false
+  }
+ ],
+ "graphTooltip": 1
 }

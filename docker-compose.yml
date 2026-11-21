@@ -851,6 +851,8 @@ services:
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_ANALYTICS_REPORTING_ENABLED=false
       - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      # Land on the golden-signals overview instead of Grafana's empty home.
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/system-overview.json
       # Read-only Postgres datasource credentials, interpolated into
       # provisioning/datasources/postgres.yml by Grafana. The dex_grafana_ro
       # role is bootstrapped by unified-api when the password is set.
@@ -885,8 +887,23 @@ services:
 
   cadvisor:
     logging: *default-logging
-    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    # >= v0.54 is required on hosts using Docker's containerd image store
+    # (overlayfs snapshotter, default on fresh Docker 29 installs): older
+    # releases fail every container with "failed to identify the read-write
+    # layer ID" and export only raw cgroup series without a `name` label.
+    # Upstream publishes to ghcr.io; gcr.io/cadvisor/cadvisor stopped at
+    # v0.55.x, so tracking it there would freeze Renovate updates.
+    image: ghcr.io/google/cadvisor:v0.60.6
     privileged: true
+    command:
+      # Docker containers only (no raw systemd cgroups), and only the compose
+      # service/project labels instead of every docker label (config hashes,
+      # image digests) — keeps series count and the 128M limit comfortable.
+      - --docker_only=true
+      - --housekeeping_interval=15s
+      - --store_container_labels=false
+      - --whitelisted_container_labels=com.docker.compose.service,com.docker.compose.project
+      - --disable_metrics=percpu,sched,tcp,udp,advtcp,process,hugetlb,referenced_memory,cpu_topology,resctrl,memory_numa,cpuset
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro

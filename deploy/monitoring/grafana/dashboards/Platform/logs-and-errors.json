@@ -1,7 +1,7 @@
 {
   "annotations": {"list": []},
   "editable": true,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "schemaVersion": 39,
   "uid": "dexarb-logs",
   "title": "Logs & errors",
@@ -9,6 +9,7 @@
   "timezone": "",
   "time": {"from": "now-3h", "to": "now"},
   "refresh": "30s",
+  "links": [{"title": "Dashboards", "type": "dashboards", "tags": ["dexarbtrading"], "asDropdown": true, "includeVars": false, "keepTime": true, "icon": "external link", "targetBlank": false}],
   "templating": {
     "list": [
       {
