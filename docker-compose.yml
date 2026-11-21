@@ -15,6 +15,29 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "3"
 
+# Container hardening for first-party services: no Linux capabilities, and
+# no-new-privileges blocks regaining privileges through setuid binaries. All of
+# them run as non-root users except mm-controller (see its comment).
+x-hardened: &hardened
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+# The Bisq images start as root only to fix data-dir ownership, then drop to
+# appuser via `su`. Keep exactly the capabilities those steps need.
+x-hardened-privdrop: &hardened-privdrop
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  cap_add:
+    - CHOWN
+    - DAC_OVERRIDE
+    - FOWNER
+    - SETUID
+    - SETGID
+
 services:
   postgres:
     logging: *default-logging
@@ -46,6 +69,7 @@ services:
     restart: unless-stopped
 
   tor:
+    <<: *hardened
     logging: *default-logging
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-kv055}/dexarbtrading-tor:${TOR_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     ports:
@@ -75,6 +99,7 @@ services:
   # consume a .onion hostname directly. This bridge presents a Docker-local TCP
   # endpoint and delegates onion resolution and transport to Tor via SOCKS5.
   bitcoind-rpc-proxy:
+    <<: *hardened
     logging: *default-logging
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-kv055}/dexarbtrading-bitcoind-rpc-proxy:${BITCOIND_RPC_PROXY_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     depends_on:
@@ -92,6 +117,7 @@ services:
     restart: unless-stopped
 
   bisq:
+    <<: *hardened-privdrop
     logging: *default-logging
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-kv055}/dexarbtrading-bisq:${BISQ_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     depends_on:
@@ -124,6 +150,7 @@ services:
     restart: unless-stopped
 
   bisq2:
+    <<: *hardened-privdrop
     logging: *default-logging
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-kv055}/dexarbtrading-bisq2:${BISQ2_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     depends_on:
@@ -159,6 +186,7 @@ services:
     restart: unless-stopped
 
   unified-api:
+    <<: *hardened
     logging: *default-logging
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-kv055}/dexarbtrading-unified-api:${UNIFIED_API_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     depends_on:
@@ -225,6 +253,7 @@ services:
     restart: unless-stopped
 
   unified-snapshot:
+    <<: *hardened
     logging: *default-logging
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-kv055}/dexarbtrading-unified-snapshot:${UNIFIED_SNAPSHOT_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     depends_on:
@@ -316,6 +345,7 @@ services:
   #   restart: unless-stopped
 
   dexmonitor:
+    <<: *hardened
     logging: *default-logging
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-kv055}/dexarbtrading-dexmonitor:${DEXMONITOR_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     depends_on:
@@ -428,7 +458,17 @@ services:
       - ./deploy/nginx/acme-webroot:/var/www/certbot
       - ./deploy/nginx/letsencrypt:/etc/letsencrypt
 
+  # mm-controller keeps UID 0 on purpose: lnd (also root) creates its data
+  # dirs 0700, so only the owning UID can reach admin.macaroon. It runs with
+  # zero capabilities, no-new-privileges, a read-only root filesystem and the
+  # LND volume mounted read-only. Running lnd and mm-controller under one
+  # shared non-root UID would remove the need for UID 0 (needs an lnd volume
+  # ownership migration and restart).
   mm-controller:
+    <<: *hardened
+    read_only: true
+    tmpfs:
+      - /tmp
     logging: *default-logging
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-kv055}/dexarbtrading-mm-controller:${MM_CONTROLLER_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     # Bridge network: all upstreams (lnd, tor, unified-api, bisq) are reached
@@ -677,7 +717,26 @@ services:
   #         cpus: '0.25'
   #   restart: unless-stopped
 
+  # One-shot: hand the data volume to fiat-controller's unprivileged UID.
+  # Needed once for volumes created while the image still ran as root; a no-op
+  # afterwards. Runs with only CHOWN and no network.
+  fiat-controller-data-init:
+    logging: *default-logging
+    image: alpine:3.21
+    command: ["chown", "-R", "10001:10001", "/data"]
+    volumes:
+      - fiat-controller-data:/data
+    network_mode: none
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+    restart: "no"
+
   fiat-controller:
+    <<: *hardened
     logging: *default-logging
     image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-kv055}/dexarbtrading-fiat-controller:${FIAT_CONTROLLER_IMAGE_TAG:-${IMAGE_TAG:-latest}}
     env_file:
@@ -690,6 +749,8 @@ services:
       - fiat-controller-data:/data
       - ${MADDY_TLS_DIR:-./deploy/maddy/tls}:/maddy-tls:ro
     depends_on:
+      fiat-controller-data-init:
+        condition: service_completed_successfully
       # totp-api is disabled above.
       postgres:
         condition: service_healthy
