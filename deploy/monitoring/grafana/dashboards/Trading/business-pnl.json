@@ -3,15 +3,14 @@
   "list": []
  },
  "editable": true,
- "graphTooltip": 0,
+ "graphTooltip": 1,
  "schemaVersion": 39,
- "uid": "dexarb-market-history",
- "title": "Market history (Postgres)",
+ "uid": "dexarb-business-pnl",
+ "title": "Business — PnL & fiat pipeline",
  "tags": [
   "dexarbtrading",
   "business",
-  "postgres",
-  "market"
+  "postgres"
  ],
  "timezone": "",
  "time": {
@@ -26,7 +25,7 @@
   {
    "id": 1,
    "type": "timeseries",
-   "title": "Net premium over time (avg by direction)",
+   "title": "Cumulative realized PnL",
    "datasource": {
     "type": "postgres",
     "uid": "postgres-dexarb"
@@ -39,7 +38,7 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "percent",
+     "unit": "currencyEUR",
      "custom": {
       "drawStyle": "line",
       "lineWidth": 1,
@@ -64,14 +63,14 @@
      "refId": "A",
      "format": "time_series",
      "rawQuery": true,
-     "rawSql": "SELECT $__timeGroup(ol.snapshot_time, $__interval) AS \"time\", o.direction AS metric, AVG(ol.net_premium_pct) AS value FROM order_lifecycle ol JOIN offers o ON o.id = ol.offer_db_id WHERE $__timeFilter(ol.snapshot_time) GROUP BY 1, 2 ORDER BY 1"
+     "rawSql": "SELECT created_at AS \"time\", SUM(total_transaction_pnl) OVER (ORDER BY created_at) AS \"cumulative PnL\" FROM transactions WHERE total_transaction_pnl IS NOT NULL AND deleted_at IS NULL ORDER BY 1"
     }
    ]
   },
   {
    "id": 2,
    "type": "timeseries",
-   "title": "Best net premium over time (max by direction)",
+   "title": "PnL per trade",
    "datasource": {
     "type": "postgres",
     "uid": "postgres-dexarb"
@@ -84,7 +83,7 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "percent",
+     "unit": "currencyEUR",
      "custom": {
       "drawStyle": "line",
       "lineWidth": 1,
@@ -109,22 +108,52 @@
      "refId": "A",
      "format": "time_series",
      "rawQuery": true,
-     "rawSql": "SELECT $__timeGroup(ol.snapshot_time, $__interval) AS \"time\", o.direction AS metric, MAX(ol.net_premium_pct) AS value FROM order_lifecycle ol JOIN offers o ON o.id = ol.offer_db_id WHERE $__timeFilter(ol.snapshot_time) GROUP BY 1, 2 ORDER BY 1"
+     "rawSql": "SELECT created_at AS \"time\", total_transaction_pnl AS \"PnL\" FROM transactions WHERE $__timeFilter(created_at) AND total_transaction_pnl IS NOT NULL AND deleted_at IS NULL ORDER BY 1"
     }
    ]
   },
   {
    "id": 3,
-   "type": "timeseries",
-   "title": "New offers per hour by exchange",
+   "type": "table",
+   "title": "Transactions by status",
    "datasource": {
     "type": "postgres",
     "uid": "postgres-dexarb"
    },
    "gridPos": {
     "h": 8,
-    "w": 12,
+    "w": 8,
     "x": 0,
+    "y": 8
+   },
+   "fieldConfig": {
+    "defaults": {},
+    "overrides": []
+   },
+   "options": {
+    "showHeader": true
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "format": "table",
+     "rawQuery": true,
+     "rawSql": "SELECT status, COUNT(*) AS count FROM transactions WHERE deleted_at IS NULL GROUP BY status ORDER BY count DESC"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "type": "timeseries",
+   "title": "Trades started per day",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "gridPos": {
+    "h": 8,
+    "w": 8,
+    "x": 8,
     "y": 8
    },
    "fieldConfig": {
@@ -154,27 +183,27 @@
      "refId": "A",
      "format": "time_series",
      "rawQuery": true,
-     "rawSql": "SELECT $__timeGroup(first_seen, '1h') AS \"time\", exchange AS metric, COUNT(*) AS value FROM offers WHERE $__timeFilter(first_seen) GROUP BY 1, 2 ORDER BY 1"
+     "rawSql": "SELECT $__timeGroup(created_at, '1d') AS \"time\", COUNT(*) AS trades FROM transactions WHERE $__timeFilter(created_at) AND deleted_at IS NULL GROUP BY 1 ORDER BY 1"
     }
    ]
   },
   {
-   "id": 4,
+   "id": 5,
    "type": "timeseries",
-   "title": "Closed-offer lifetime (avg hours, by exchange)",
+   "title": "Avg trade duration (started per day)",
    "datasource": {
     "type": "postgres",
     "uid": "postgres-dexarb"
    },
    "gridPos": {
     "h": 8,
-    "w": 12,
-    "x": 12,
+    "w": 8,
+    "x": 16,
     "y": 8
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "h",
+     "unit": "s",
      "custom": {
       "drawStyle": "line",
       "lineWidth": 1,
@@ -199,14 +228,14 @@
      "refId": "A",
      "format": "time_series",
      "rawQuery": true,
-     "rawSql": "SELECT $__timeGroup(last_seen, '1h') AS \"time\", exchange AS metric, AVG(duration) / 3600.0 AS value FROM offers WHERE $__timeFilter(last_seen) AND duration IS NOT NULL GROUP BY 1, 2 ORDER BY 1"
+     "rawSql": "SELECT $__timeGroup(created_at, '1d') AS \"time\", AVG(total_transaction_time_elapsed) AS \"seconds\" FROM transactions WHERE $__timeFilter(created_at) AND total_transaction_time_elapsed IS NOT NULL GROUP BY 1 ORDER BY 1"
     }
    ]
   },
   {
-   "id": 5,
+   "id": 6,
    "type": "timeseries",
-   "title": "Reference price (EUR)",
+   "title": "Fiat push pipeline — notifications by status",
    "datasource": {
     "type": "postgres",
     "uid": "postgres-dexarb"
@@ -219,7 +248,7 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "currencyEUR",
+     "unit": "short",
      "custom": {
       "drawStyle": "line",
       "lineWidth": 1,
@@ -244,14 +273,14 @@
      "refId": "A",
      "format": "time_series",
      "rawQuery": true,
-     "rawSql": "SELECT $__timeGroup(snapshot_time, $__interval) AS \"time\", AVG(ref_price) AS \"ref price\" FROM order_lifecycle WHERE $__timeFilter(snapshot_time) GROUP BY 1 ORDER BY 1"
+     "rawSql": "SELECT $__timeGroup(received_at, $__interval) AS \"time\", status AS metric, COUNT(*) AS count FROM fiat_tx_push_logs WHERE $__timeFilter(received_at) GROUP BY 1, 2 ORDER BY 1"
     }
    ]
   },
   {
-   "id": 6,
+   "id": 7,
    "type": "timeseries",
-   "title": "Snapshot cycle duration",
+   "title": "Fiat push — received → released latency (p50 per hour)",
    "datasource": {
     "type": "postgres",
     "uid": "postgres-dexarb"
@@ -289,54 +318,53 @@
      "refId": "A",
      "format": "time_series",
      "rawQuery": true,
-     "rawSql": "SELECT timestamp AS \"time\", cycle_ms / 1000.0 AS \"cycle seconds\" FROM snapshot_log WHERE $__timeFilter(timestamp) AND cycle_ms IS NOT NULL ORDER BY 1"
+     "rawSql": "SELECT $__timeGroup(received_at, '1h') AS \"time\", PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (updated_at - received_at))) AS \"p50 seconds\" FROM fiat_tx_push_logs WHERE $__timeFilter(received_at) AND status = 'released' GROUP BY 1 ORDER BY 1"
     }
    ]
   },
   {
-   "id": 7,
-   "type": "timeseries",
-   "title": "Offers seen per snapshot",
+   "id": 8,
+   "type": "table",
+   "title": "Recent fiat push notifications",
    "datasource": {
     "type": "postgres",
     "uid": "postgres-dexarb"
    },
    "gridPos": {
     "h": 8,
-    "w": 12,
+    "w": 24,
     "x": 0,
     "y": 24
    },
    "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "custom": {
-      "drawStyle": "line",
-      "lineWidth": 1,
-      "fillOpacity": 8,
-      "spanNulls": true
-     }
-    },
+    "defaults": {},
     "overrides": []
    },
    "options": {
-    "legend": {
-     "displayMode": "list",
-     "placement": "bottom"
-    },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "desc"
-    }
+    "showHeader": true
    },
    "targets": [
     {
      "refId": "A",
-     "format": "time_series",
+     "format": "table",
      "rawQuery": true,
-     "rawSql": "SELECT timestamp AS \"time\", offers_count AS \"offers\" FROM snapshot_log WHERE $__timeFilter(timestamp) ORDER BY 1"
+     "rawSql": "SELECT received_at, app, status, amount, currency, sender, matched_tx_id FROM fiat_tx_push_logs WHERE $__timeFilter(received_at) ORDER BY received_at DESC LIMIT 50"
     }
    ]
+  }
+ ],
+ "links": [
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "dexarbtrading"
+   ],
+   "asDropdown": true,
+   "includeVars": false,
+   "keepTime": true,
+   "icon": "external link",
+   "targetBlank": false
   }
  ]
 }

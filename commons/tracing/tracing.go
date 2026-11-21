@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"commons/httproute"
+
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -97,6 +99,9 @@ func RouteNamer(next http.Handler) http.Handler {
 		if r.Pattern == "" {
 			return
 		}
+		// Hand the pattern to outer observers (metrics.Middleware) that sit
+		// above context-replacing middleware and so never see r.Pattern.
+		httproute.Record(r)
 		span := trace.SpanFromContext(r.Context())
 		if span.SpanContext().IsValid() {
 			span.SetName(r.Method + " " + r.Pattern)
