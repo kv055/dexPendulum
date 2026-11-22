@@ -33,7 +33,7 @@ services:
       # in docker-compose.yml drifts away from what actually runs.
       # bisq-version-bump.yml bumps this line together with the runtime env.
       args:
-        - BISQ_VERSION=1.10.11
+        - BISQ_VERSION=1.10.12
 
   bisq2:
     build:
