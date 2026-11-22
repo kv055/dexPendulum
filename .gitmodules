@@ -1,7 +1,7 @@
 [submodule "dexUnifiedApi"]
 	path = dexUnifiedApi
 	url = https://github.com/kv055/dexUnifiedApi.git
-[submodule "dexMmController"]
+[submodule "dexTakerController"]
 	path = dexTakerController
 	url = https://github.com/kv055/dexTakerController.git
 [submodule "dexMonitor"]
