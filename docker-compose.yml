@@ -248,7 +248,14 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          # 256M was too tight: the steady-state working set (snapshot route
+          # book + live offer hub + DB notification rebuilds) sits at ~260M,
+          # so the cgroup OOM-killed the server every 2-3h (exit 137, host
+          # journal "Memory cgroup out of memory: Killed process ... server")
+          # and nginx served 502s for /api/* while it restarted. 384M gives
+          # ~120M headroom over the observed peak; verified live on the VPS
+          # via `docker update --memory 384M --memory-swap 768M`.
+          memory: 384M
           cpus: '0.5'
     restart: unless-stopped
 
