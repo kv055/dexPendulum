@@ -3,7 +3,7 @@ module commons
 go 1.26.8
 
 require (
-	github.com/alexedwards/scs/postgresstore v0.0.0-20251002162104-209de6e426de
+	github.com/alexedwards/scs/postgresstore v0.0.0-20261119174900-ed2e92329119
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/binance/binance-connector-go/clients/derivativestradingusdsfutures v1.24.1
 	github.com/binance/binance-connector-go/clients/spot v1.20.0
@@ -13,7 +13,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/krakenfx/api-go/v2 v2.0.0
 	github.com/nbd-wtf/go-nostr v0.52.3
-	github.com/oapi-codegen/runtime v1.9.0
+	github.com/oapi-codegen/runtime v1.9.1
 	github.com/prometheus/client_golang v1.25.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.72.0
 	go.opentelemetry.io/otel v1.47.0
