@@ -128,7 +128,7 @@ services:
       unified-api:
         condition: service_healthy
     environment:
-      - BISQ_VERSION=1.10.11
+      - BISQ_VERSION=1.10.12
       - BISQ_ACCOUNT_PROVIDER=Bisq
       - BISQ_ACCOUNT_FILE_PATH=${BISQ_ACCOUNT_FILE_PATH:-}
       - BISQ_BACKUP_DATABASE_URL=postgres://dex_unified_api:${POSTGRES_UNIFIED_API_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
@@ -531,7 +531,7 @@ services:
       # bisq container did not publish 9998 to the host.
       - BISQ_GRPC_HOST=bisq:9998
       - BISQ_API_PASSWORD=${BISQ_API_PASSWORD:-}
-      - BISQ_VERSION=1.10.11
+      - BISQ_VERSION=1.10.12
       - BISQ2_REST_HOST=bisq2:8090
       - BISQ2_API_PASSWORD=${BISQ2_API_PASSWORD:-}
       - BISQ2_VERSION=2.1.15
@@ -732,7 +732,7 @@ services:
   # afterwards. Runs with only CHOWN and no network.
   fiat-controller-data-init:
     logging: *default-logging
-    image: alpine:3.21
+    image: alpine:3.24
     command: ["chown", "-R", "10001:10001", "/data"]
     volumes:
       - fiat-controller-data:/data
@@ -929,7 +929,7 @@ services:
 
   postgres-exporter:
     logging: *default-logging
-    image: prometheuscommunity/postgres-exporter:v0.20.1
+    image: prometheuscommunity/postgres-exporter:v0.21.1
     depends_on:
       postgres:
         condition: service_healthy
