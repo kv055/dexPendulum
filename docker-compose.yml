@@ -732,7 +732,7 @@ services:
   # afterwards. Runs with only CHOWN and no network.
   fiat-controller-data-init:
     logging: *default-logging
-    image: alpine:3.21
+    image: alpine:3.24
     command: ["chown", "-R", "10001:10001", "/data"]
     volumes:
       - fiat-controller-data:/data
@@ -852,7 +852,7 @@ services:
 
   grafana:
     logging: *default-logging
-    image: grafana/grafana:13.3.1
+    image: grafana/grafana:13.3.2
     depends_on:
       - prometheus
     environment:
@@ -881,7 +881,7 @@ services:
 
   node-exporter:
     logging: *default-logging
-    image: prom/node-exporter:v1.12.1
+    image: prom/node-exporter:v1.13.1
     pid: host
     command:
       - --path.rootfs=/host
@@ -903,7 +903,7 @@ services:
     # layer ID" and export only raw cgroup series without a `name` label.
     # Upstream publishes to ghcr.io; gcr.io/cadvisor/cadvisor stopped at
     # v0.55.x, so tracking it there would freeze Renovate updates.
-    image: ghcr.io/google/cadvisor:v0.60.6
+    image: ghcr.io/google/cadvisor:v0.61.1
     privileged: true
     command:
       # Docker containers only (no raw systemd cgroups), and only the compose
@@ -929,7 +929,7 @@ services:
 
   postgres-exporter:
     logging: *default-logging
-    image: prometheuscommunity/postgres-exporter:v0.20.1
+    image: prometheuscommunity/postgres-exporter:v0.21.1
     depends_on:
       postgres:
         condition: service_healthy
@@ -1009,7 +1009,7 @@ services:
   # behind the docs profile and bound to loopback because internal/admin routes
   # are included in the bundled contracts.
   api-docs:
-    image: swaggerapi/swagger-ui:v5.35.0
+    image: swaggerapi/swagger-ui:v5.35.1
     profiles:
       - docs
     environment:
