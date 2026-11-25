@@ -39,6 +39,9 @@ type PostInternalBisqRequoteJSONBody struct {
 	VolumeAsLong        int    `json:"volume_as_long"`
 }
 
+// PostInternalExecutionQuotesJSONBody defines parameters for PostInternalExecutionQuotes.
+type PostInternalExecutionQuotesJSONBody map[string]interface{}
+
 // PostInternalLiveOffersJSONBody defines parameters for PostInternalLiveOffers.
 type PostInternalLiveOffersJSONBody map[string]interface{}
 
@@ -50,6 +53,9 @@ type PostApiAccountsHealthCheckJSONRequestBody PostApiAccountsHealthCheckJSONBod
 
 // PostInternalBisqRequoteJSONRequestBody defines body for PostInternalBisqRequote for application/json ContentType.
 type PostInternalBisqRequoteJSONRequestBody PostInternalBisqRequoteJSONBody
+
+// PostInternalExecutionQuotesJSONRequestBody defines body for PostInternalExecutionQuotes for application/json ContentType.
+type PostInternalExecutionQuotesJSONRequestBody PostInternalExecutionQuotesJSONBody
 
 // PostInternalLiveOffersJSONRequestBody defines body for PostInternalLiveOffers for application/json ContentType.
 type PostInternalLiveOffersJSONRequestBody PostInternalLiveOffersJSONBody
@@ -250,6 +256,24 @@ type ClientInterface interface {
 	// Corresponds with GET /internal/cex_permissions (the `GetInternalCexPermissions` operationId).
 	GetInternalCexPermissions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostInternalExecutionQuotesWithBody Create an authoritative execution quote for a custom trade size
+	//
+	// Same handler as the session-gated POST /api/execution-quotes. dexMonitor's dashboard proxy calls this route: it has already checked the browser session and authenticates with X-Internal-Secret instead of a cookie.
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /internal/execution-quotes (the `PostInternalExecutionQuotes` operationId).
+	PostInternalExecutionQuotesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostInternalExecutionQuotes Create an authoritative execution quote for a custom trade size
+	//
+	// Same handler as the session-gated POST /api/execution-quotes. dexMonitor's dashboard proxy calls this route: it has already checked the browser session and authenticates with X-Internal-Secret instead of a cookie.
+	//
+	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /internal/execution-quotes (the `PostInternalExecutionQuotes` operationId).
+	PostInternalExecutionQuotes(ctx context.Context, body PostInternalExecutionQuotesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostInternalLiveOffersWithBody POST /internal/live_offers
 	//
 	// Takes any type of body and a specified content type.
@@ -367,6 +391,44 @@ func (c *Client) PostInternalBisqRequote(ctx context.Context, body PostInternalB
 // Corresponds with GET /internal/cex_permissions (the `GetInternalCexPermissions` operationId).
 func (c *Client) GetInternalCexPermissions(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetInternalCexPermissionsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PostInternalExecutionQuotesWithBody Create an authoritative execution quote for a custom trade size
+//
+// Same handler as the session-gated POST /api/execution-quotes. dexMonitor's dashboard proxy calls this route: it has already checked the browser session and authenticates with X-Internal-Secret instead of a cookie.
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /internal/execution-quotes (the `PostInternalExecutionQuotes` operationId).
+func (c *Client) PostInternalExecutionQuotesWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInternalExecutionQuotesRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// PostInternalExecutionQuotes Create an authoritative execution quote for a custom trade size
+//
+// Same handler as the session-gated POST /api/execution-quotes. dexMonitor's dashboard proxy calls this route: it has already checked the browser session and authenticates with X-Internal-Secret instead of a cookie.
+//
+// Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /internal/execution-quotes (the `PostInternalExecutionQuotes` operationId).
+func (c *Client) PostInternalExecutionQuotes(ctx context.Context, body PostInternalExecutionQuotesJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostInternalExecutionQuotesRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -579,6 +641,46 @@ func NewGetInternalCexPermissionsRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewPostInternalExecutionQuotesRequest calls the generic PostInternalExecutionQuotes builder with application/json body
+func NewPostInternalExecutionQuotesRequest(server string, body PostInternalExecutionQuotesJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostInternalExecutionQuotesRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostInternalExecutionQuotesRequestWithBody constructs an http.Request for the PostInternalExecutionQuotes method, with any body, and a specified content type
+func NewPostInternalExecutionQuotesRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/internal/execution-quotes")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewPostInternalLiveOffersRequest calls the generic PostInternalLiveOffers builder with application/json body
 func NewPostInternalLiveOffersRequest(server string, body PostInternalLiveOffersJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -744,6 +846,24 @@ type ClientWithResponsesInterface interface {
 	//
 	// Corresponds with GET /internal/cex_permissions (the `GetInternalCexPermissions` operationId).
 	GetInternalCexPermissionsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetInternalCexPermissionsResponse, error)
+
+	// PostInternalExecutionQuotesWithBodyWithResponse Create an authoritative execution quote for a custom trade size
+	//
+	// Same handler as the session-gated POST /api/execution-quotes. dexMonitor's dashboard proxy calls this route: it has already checked the browser session and authenticates with X-Internal-Secret instead of a cookie.
+	//
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/execution-quotes (the `PostInternalExecutionQuotes` operationId).
+	PostInternalExecutionQuotesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInternalExecutionQuotesResponse, error)
+
+	// PostInternalExecutionQuotesWithResponse Create an authoritative execution quote for a custom trade size
+	//
+	// Same handler as the session-gated POST /api/execution-quotes. dexMonitor's dashboard proxy calls this route: it has already checked the browser session and authenticates with X-Internal-Secret instead of a cookie.
+	//
+	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /internal/execution-quotes (the `PostInternalExecutionQuotes` operationId).
+	PostInternalExecutionQuotesWithResponse(ctx context.Context, body PostInternalExecutionQuotesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInternalExecutionQuotesResponse, error)
 
 	// PostInternalLiveOffersWithBodyWithResponse POST /internal/live_offers
 	//
@@ -973,6 +1093,54 @@ func (r GetInternalCexPermissionsResponse) ContentType() string {
 	return ""
 }
 
+type PostInternalExecutionQuotesResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	// JSON200 the response for an HTTP 200 `application/json` response
+	JSON200 *map[string]interface{}
+	// JSONDefault the response for an HTTP default `application/json` response
+	JSONDefault *map[string]interface{}
+}
+
+// GetJSON200 returns the response for an HTTP 200 `application/json` response
+func (r PostInternalExecutionQuotesResponse) GetJSON200() *map[string]interface{} {
+	return r.JSON200
+}
+
+// GetJSONDefault returns the response for an HTTP default `application/json` response
+func (r PostInternalExecutionQuotesResponse) GetJSONDefault() *map[string]interface{} {
+	return r.JSONDefault
+}
+
+// GetBody returns the raw response body bytes
+func (r PostInternalExecutionQuotesResponse) GetBody() []byte {
+	return r.Body
+}
+
+// Status returns HTTPResponse.Status
+func (r PostInternalExecutionQuotesResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostInternalExecutionQuotesResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// ContentType is a convenience method to retrieve the Content-Type value from the HTTP response headers
+func (r PostInternalExecutionQuotesResponse) ContentType() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Header.Get("Content-Type")
+	}
+	return ""
+}
+
 type PostInternalLiveOffersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1152,6 +1320,36 @@ func (c *ClientWithResponses) GetInternalCexPermissionsWithResponse(ctx context.
 		return nil, err
 	}
 	return ParseGetInternalCexPermissionsResponse(rsp)
+}
+
+// PostInternalExecutionQuotesWithBodyWithResponse Create an authoritative execution quote for a custom trade size
+//
+// Same handler as the session-gated POST /api/execution-quotes. dexMonitor's dashboard proxy calls this route: it has already checked the browser session and authenticates with X-Internal-Secret instead of a cookie.
+//
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/execution-quotes (the `PostInternalExecutionQuotes` operationId).
+func (c *ClientWithResponses) PostInternalExecutionQuotesWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostInternalExecutionQuotesResponse, error) {
+	rsp, err := c.PostInternalExecutionQuotesWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInternalExecutionQuotesResponse(rsp)
+}
+
+// PostInternalExecutionQuotesWithResponse Create an authoritative execution quote for a custom trade size
+//
+// Same handler as the session-gated POST /api/execution-quotes. dexMonitor's dashboard proxy calls this route: it has already checked the browser session and authenticates with X-Internal-Secret instead of a cookie.
+//
+// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /internal/execution-quotes (the `PostInternalExecutionQuotes` operationId).
+func (c *ClientWithResponses) PostInternalExecutionQuotesWithResponse(ctx context.Context, body PostInternalExecutionQuotesJSONRequestBody, reqEditors ...RequestEditorFn) (*PostInternalExecutionQuotesResponse, error) {
+	rsp, err := c.PostInternalExecutionQuotes(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostInternalExecutionQuotesResponse(rsp)
 }
 
 // PostInternalLiveOffersWithBodyWithResponse POST /internal/live_offers
@@ -1336,6 +1534,42 @@ func ParseGetInternalCexPermissionsResponse(rsp *http.Response) (*GetInternalCex
 	}
 
 	response := &GetInternalCexPermissionsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest map[string]interface{}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	case true:
+		// Content-type (text/plain) unsupported
+
+	}
+
+	return response, nil
+}
+
+// ParsePostInternalExecutionQuotesResponse parses an HTTP response from a PostInternalExecutionQuotesWithResponse call
+func ParsePostInternalExecutionQuotesResponse(rsp *http.Response) (*PostInternalExecutionQuotesResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostInternalExecutionQuotesResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
