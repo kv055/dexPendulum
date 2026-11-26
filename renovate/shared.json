@@ -101,6 +101,29 @@
       "groupName": "stateful services (approval required)",
       "groupSlug": "stateful",
       "dependencyDashboardApproval": true
+    },
+    {
+      "description": "btcd v0.25+ moves wire/txscript/chaincfg/btcutil into new /v2 modules, but boltz-client, lnd, btcwallet and btcutil/psbt still build on btcd v0.24 + btcutil v1, and the v2 types do not mix with theirs (dexTakerController). Hold btcd below v0.25 and btcutil on v1 until lnd and psbt move to the v2 modules.",
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "github.com/btcsuite/btcd"
+      ],
+      "allowedVersions": "<0.25.0"
+    },
+    {
+      "description": "See the btcd rule above: btcutil v2 (github.com/btcsuite/btcd/btcutil/v2) is the same split; stay on v1.",
+      "matchDatasources": [
+        "go"
+      ],
+      "matchPackageNames": [
+        "github.com/btcsuite/btcd/btcutil"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
     }
   ],
   "ignoreDeps": [

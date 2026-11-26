@@ -52,7 +52,7 @@ when a panel elsewhere says *No data*, check **Observability health** first.
 | **Trading/** `business-pnl.json` | **(Postgres)** Realized PnL, per-trade PnL, transaction status funnel, fiat push pipeline |
 | **Trading/** `market-history.json` | **(Postgres)** Net-premium history from `order_lifecycle`, offer appearance/lifetime, reference price, snapshot cycle (defaults to 24h — `order_lifecycle` is 16M+ rows) |
 | **Trading/** `accounts-and-ws.json` | Trading-account health + live-feed WebSocket clients/broadcasts |
-| **Pipeline/** `snapshot-logs.json` | *Snapshot pipeline*: cycle time vs. schedule, per-venue fetch cost and failures, RoboSats coordinator responses, Mostro relay yield, rejected source records, closed-offer analysis, top worker errors, Tempo runs |
+| **Pipeline/** `snapshot-logs.json` | *Snapshot pipeline*: cycle time vs. schedule, per-venue fetch cost and failures, recent `snapshot_log` runs (offers per venue, **Postgres**), RoboSats coordinator responses, Mostro relay yield, rejected source records, closed-offer analysis, top worker errors, Tempo runs |
 | **Pipeline/** `data-freshness.json` | Snapshot/OHLC age, exchange up/down, price-feed staleness & reconnects |
 | **Pipeline/** `exchange-health.json` | Exchange up/down with the bisq/bisq2 alert state |
 | **Platform/** `observability-health.json` | Can we trust the dashboards? Scrape health and duration, Grafana provisioning errors, cAdvisor discovery failures, log volume per service and unstructured share, Loki/Tempo/Alloy ingest and drops, disk/DB growth runway |
