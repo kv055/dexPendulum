@@ -560,6 +560,92 @@
    }
   },
   {
+   "id": 29,
+   "type": "row",
+   "title": "Recent runs",
+   "collapsed": false,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 13
+   },
+   "panels": []
+  },
+  {
+   "type": "table",
+   "title": "Recent snapshot runs (Postgres)",
+   "description": "The snapshot_log table: one row per run with total offers and per-venue offer counts. 'problems' lists venues whose fetch was not complete (incomplete/failed/offline). Replaces the Snapshot Log panel that used to live in the monitor UI's Taker Controller tab.",
+   "datasource": {
+    "type": "postgres",
+    "uid": "postgres-dexarb"
+   },
+   "targets": [
+    {
+     "datasource": {
+      "type": "postgres",
+      "uid": "postgres-dexarb"
+     },
+     "rawQuery": true,
+     "editorMode": "code",
+     "format": "table",
+     "rawSql": "SELECT\n  timestamp AS \"time\",\n  offers_count AS \"offers\",\n  ROUND(cycle_ms / 1000.0, 1) AS \"cycle s\",\n  (exchanges->'bisq'->>'count')::int AS \"bisq\",\n  (exchanges->'bisq2'->>'count')::int AS \"bisq2\",\n  (exchanges->'hodlhodl'->>'count')::int AS \"hodlhodl\",\n  (exchanges->'robosats'->>'count')::int AS \"robosats\",\n  (exchanges->'peachbitcoin'->>'count')::int AS \"peach\",\n  (exchanges->'mostro'->>'count')::int AS \"mostro\",\n  (\n    SELECT string_agg(key || ': ' || (value->>'status'), ', ')\n    FROM jsonb_each(exchanges)\n    WHERE key IN ('bisq', 'bisq2', 'hodlhodl', 'robosats', 'peachbitcoin', 'mostro')\n      AND COALESCE(value->>'status', '') <> 'complete'\n  ) AS \"problems\"\nFROM snapshot_log\nWHERE $__timeFilter(timestamp)\nORDER BY timestamp DESC\nLIMIT 30",
+     "refId": "A"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "custom": {
+      "align": "auto",
+      "cellOptions": {
+       "type": "auto"
+      }
+     },
+     "noValue": "–"
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "problems"
+      },
+      "properties": [
+       {
+        "id": "custom.width",
+        "value": 220
+       },
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "red"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "options": {
+    "showHeader": true,
+    "cellHeight": "sm",
+    "footer": {
+     "show": false,
+     "reducer": [
+      "sum"
+     ],
+     "fields": ""
+    }
+   },
+   "transformations": [],
+   "id": 30,
+   "gridPos": {
+    "h": 10,
+    "w": 24,
+    "x": 0,
+    "y": 14
+   }
+  },
+  {
    "id": 10,
    "type": "row",
    "title": "Venues",
@@ -568,7 +654,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 13
+    "y": 24
    },
    "panels": []
   },
@@ -630,7 +716,7 @@
     "h": 8,
     "w": 12,
     "x": 0,
-    "y": 14
+    "y": 25
    }
   },
   {
@@ -689,7 +775,7 @@
     "h": 8,
     "w": 12,
     "x": 12,
-    "y": 14
+    "y": 25
    }
   },
   {
@@ -748,7 +834,7 @@
     "h": 7,
     "w": 8,
     "x": 0,
-    "y": 22
+    "y": 33
    }
   },
   {
@@ -809,7 +895,7 @@
     "h": 7,
     "w": 8,
     "x": 8,
-    "y": 22
+    "y": 33
    }
   },
   {
@@ -870,7 +956,7 @@
     "h": 7,
     "w": 8,
     "x": 16,
-    "y": 22
+    "y": 33
    }
   },
   {
@@ -882,7 +968,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 29
+    "y": 40
    },
    "panels": []
   },
@@ -954,7 +1040,7 @@
     "h": 8,
     "w": 8,
     "x": 0,
-    "y": 30
+    "y": 41
    }
   },
   {
@@ -1015,7 +1101,7 @@
     "h": 8,
     "w": 8,
     "x": 8,
-    "y": 30
+    "y": 41
    }
   },
   {
@@ -1106,7 +1192,7 @@
     "h": 8,
     "w": 8,
     "x": 16,
-    "y": 30
+    "y": 41
    }
   },
   {
@@ -1118,7 +1204,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 38
+    "y": 49
    },
    "panels": []
   },
@@ -1210,7 +1296,7 @@
     "h": 8,
     "w": 12,
     "x": 0,
-    "y": 39
+    "y": 50
    }
   },
   {
@@ -1245,7 +1331,7 @@
     "h": 8,
     "w": 12,
     "x": 12,
-    "y": 39
+    "y": 50
    }
   },
   {
@@ -1257,7 +1343,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 47
+    "y": 58
    },
    "panels": []
   },
@@ -1319,7 +1405,7 @@
     "h": 9,
     "w": 8,
     "x": 0,
-    "y": 48
+    "y": 59
    }
   },
   {
@@ -1354,7 +1440,7 @@
     "h": 9,
     "w": 16,
     "x": 8,
-    "y": 48
+    "y": 59
    }
   },
   {
@@ -1390,7 +1476,7 @@
     "h": 8,
     "w": 24,
     "x": 0,
-    "y": 57
+    "y": 68
    }
   },
   {
@@ -1402,7 +1488,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 65
+    "y": 76
    },
    "panels": [
     {
@@ -1437,7 +1523,7 @@
       "h": 12,
       "w": 24,
       "x": 0,
-      "y": 66
+      "y": 77
      }
     }
    ]
