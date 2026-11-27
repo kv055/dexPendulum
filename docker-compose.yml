@@ -468,6 +468,12 @@ services:
         condition: service_healthy
       tor:
         condition: service_healthy
+      # The dex_monitor_public role is reconciled by unified-api's startup;
+      # waiting for its health removes the first-deploy race where this
+      # instance starts before the role exists and burns its healthcheck
+      # patience crash-looping on auth failures.
+      unified-api:
+        condition: service_healthy
     environment:
       - PUBLIC_EDITION=true
       # Restricted role; the password arrives from the root .env. With the
