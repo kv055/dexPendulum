@@ -787,6 +787,12 @@ if start_release \
     while IFS= read -r old_release; do
       [[ "$old_release" == "$release_root/"* ]] && rm -rf "$old_release"
     done
+  # Drop images only the trimmed releases used. Best effort: a healthy deploy
+  # never fails over cache cleanup.
+  if [[ -f deploy/prune-images.sh ]]; then
+    bash deploy/prune-images.sh --repo-dir "$repo_dir" --lock-held ||
+      echo "warning: post-deploy image prune failed" >&2
+  fi
   echo "deploy of $new_sha healthy"
   exit 0
 fi
