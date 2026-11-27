@@ -103,6 +103,40 @@ class ReleaseTests(unittest.TestCase):
         candidate = self.prepare()
         self.assertEqual(candidate["services"]["postgres"], self.base["services"]["postgres"])
 
+    def test_alias_pins_tracked_service_digest(self):
+        # An unmanaged service sharing a catalogue service's exact image
+        # reference must follow that service's rebuild instead of freezing.
+        self.config["services"]["unified-api-public"] = {
+            "image": self.config["services"]["unified-api"]["image"]}
+        candidate = self.prepare()
+        alias = candidate["services"]["unified-api-public"]
+        self.assertEqual(alias["image"], candidate["services"]["unified-api"]["image"])
+        self.assertIsNone(alias["source"])
+        self.assertEqual(alias["configured"], self.config["services"]["unified-api"]["image"])
+
+    def test_alias_requires_tracked_service_build(self):
+        # No receipt and no prior digest for the aliased service: the alias
+        # cannot inherit a floating tag.
+        self.config["services"]["unified-api-public"] = {
+            "image": self.config["services"]["unified-api"]["image"]}
+        self.base["services"] = {"bisq2": entry("bisq2")}
+        images.write(self.baseline, self.base)
+        (self.receipts / "api.json").unlink()
+        self.args.changed = ""
+        with self.assertRaisesRegex(ValueError, "requires a build"):
+            self.prepare()
+
+    def test_non_alias_keeps_prior_digest(self):
+        # Unmanaged services with their own image keep the existing
+        # freeze-at-first-pull behaviour (prior digest when configured
+        # is unchanged).
+        self.config["services"]["nginx"] = {"image": "nginx:1.31-alpine"}
+        self.base["services"]["nginx"] = {"configured": "nginx:1.31-alpine",
+            "source": None, "image": "nginx@sha256:" + D1}
+        images.write(self.baseline, self.base)
+        candidate = self.prepare()
+        self.assertEqual(candidate["services"]["nginx"]["image"], "nginx@sha256:" + D1)
+
     def test_changed_repository_requires_build(self):
         self.config["services"]["bisq2"]["image"] = "ghcr.io/another/bisq2:" + A
         with self.assertRaisesRegex(ValueError, "repository changed"):

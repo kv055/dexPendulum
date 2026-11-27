@@ -182,6 +182,17 @@ def prepare(args):
     # Rendering uses new source/config, but never floating values for unchanged
     # custom services. Caller has loaded candidate images.env.
     config = json.loads(run("docker", "compose", "config", "--format", "json"))
+    # Exact image references shared with a catalogue service define aliases:
+    # an unmanaged service running a catalogue service's image (e.g.
+    # dexmonitor-public reusing the dexmonitor image in public mode) must be
+    # pinned to whatever that catalogue service resolved to, so it moves with
+    # every rebuild instead of freezing at its first pulled digest.
+    alias_refs = {}
+    for name, cfg in config["services"].items():
+        if name in known:
+            ref = cfg.get("image", "")
+            if ref:
+                alias_refs.setdefault(ref, name)
     entries = {}
     for name, cfg in config["services"].items():
         configured = cfg.get("image", "")
@@ -198,7 +209,13 @@ def prepare(args):
         else:
             if "build" in cfg:
                 raise ValueError(f"unmanaged build service: {name}")
-            if prior.get("configured") == configured and prior.get("image"):
+            alias = alias_refs.get(configured)
+            if alias is not None:
+                item = receipts.get(alias) or base["services"].get(alias, {})
+                image = item.get("image")
+                if not image or not REF.fullmatch(image):
+                    raise ValueError(f"{name} requires a build before digest migration")
+            elif prior.get("configured") == configured and prior.get("image"):
                 image = prior["image"]
             elif REF.fullmatch(configured):
                 image = configured

@@ -1,0 +1,26 @@
+# Hourly outside check of the public monitor: the edge still blocks everything
+# but the public read routes, and live offers are still priced with a route
+# (a public seed that stopped matching the routing rules would price every
+# offer at a net premium of 0). Off until PUBLIC_DEPLOY_ENABLED is "true".
+name: Public monitor check
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Public edge and routing
+    if: vars.PUBLIC_DEPLOY_ENABLED == 'true' && vars.PUBLIC_HOSTNAME != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check the public edge
+        env:
+          PUBLIC_URL: https://${{ vars.PUBLIC_HOSTNAME }}
+        run: CHECK_ROUTES=1 bash scripts/public-edge-check.sh "$PUBLIC_URL"

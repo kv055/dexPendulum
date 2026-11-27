@@ -37,6 +37,13 @@ ROOT_PRESENT=(
   # VPS deployments derive this from /etc/dexarb/edge.env. Keep the dotenv key
   # as a local-development fallback, but allow it to be empty.
   DEXMM_TELEGRAM_WEBHOOK_URL
+  # Co-hosted public monitor (profile "public", see deploy/public/README.md).
+  # All three stay empty when the public monitor is off; enabling it means
+  # COMPOSE_PROFILES=public, PUBLIC_LISTEN_ADDR=:5011 on unified-api, and a
+  # generated role password for dex_monitor_public.
+  POSTGRES_MONITOR_PUBLIC_PASSWORD
+  PUBLIC_LISTEN_ADDR
+  COMPOSE_PROFILES
 )
 
 UNIFIED_API_REQUIRED=(
@@ -189,6 +196,22 @@ validate_tree() {
   validate_file monitor "$mode" "$root/dexMonitor/$suffix"
   validate_file mm-controller "$mode" "$root/dexTakerController/$suffix"
   validate_file fiat-controller "$mode" "$root/dexFiatController/$suffix"
+
+  # The co-hosted public monitor must not be enabled half-way: with its
+  # profile active but no role password, the container would come up unable
+  # to authenticate and fail the deploy at the healthcheck — catch it in the
+  # bundle instead, before anything restarts.
+  if [[ "$mode" == values ]]; then
+    local profiles public_password
+    profiles="$(value_for "$root/$suffix" COMPOSE_PROFILES)"
+    public_password="$(value_for "$root/$suffix" POSTGRES_MONITOR_PUBLIC_PASSWORD)"
+    profiles="${profiles%%$'\r'}"
+    public_password="${public_password%%$'\r'}"
+    if [[ ",$profiles," == *",public,"* && -z "$public_password" ]]; then
+      echo "ERROR: $root/$suffix enables the public profile without POSTGRES_MONITOR_PUBLIC_PASSWORD" >&2
+      return 1
+    fi
+  fi
 }
 
 command="${1:-}"
