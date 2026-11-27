@@ -1,6 +1,7 @@
 package kraken
 
 import (
+	"commons/apierror"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -73,14 +74,18 @@ func (c *FuturesClient) Request(ctx context.Context, method, path string, auth b
 	resp, err := derivatives.Call[json.RawMessage](contextREST{rest: c.rest, ctx: ctx, client: c.client, nonce: c.nonce.Get}, derivatives.RequestOptions{
 		Auth: auth, Method: method, Path: path, Query: query, Body: body,
 	})
+	// Check the status before the decode error: a rejected request carries
+	// Kraken's reason (e.g. insufficientAvailableFunds) or an HTML error page.
+	if resp != nil && resp.Http != nil && resp.Http.Response != nil {
+		if status := resp.Http.StatusCode; status < 200 || status >= 300 {
+			return fmt.Errorf("kraken futures %s %s: %w", method, path, apierror.FromBody(status, resp.Http.Body, "Kraken Futures"))
+		}
+	}
 	if err != nil {
 		return err
 	}
 	if resp.Http == nil || resp.Http.Response == nil {
 		return fmt.Errorf("kraken futures: missing HTTP response")
-	}
-	if status := resp.Http.StatusCode; status < 200 || status >= 300 {
-		return fmt.Errorf("kraken futures: HTTP status %d", status)
 	}
 	if out != nil && len(resp.Result) > 0 {
 		if err := json.Unmarshal(resp.Result, out); err != nil {

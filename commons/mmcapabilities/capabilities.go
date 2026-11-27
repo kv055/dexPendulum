@@ -3,10 +3,12 @@
 package mmcapabilities
 
 import (
+	"commons/apierror"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -256,16 +258,30 @@ func EffectiveExclusions(states []ProviderState) (spot, hedge []string) {
 func RequireSpot(state ProviderState) error  { return requireLeg(state.Provider, "spot", state.Spot) }
 func RequireHedge(state ProviderState) error { return requireLeg(state.Provider, "hedge", state.Hedge) }
 
+// Codes for disabled execution legs.
+const (
+	CodeSpotDisabled  = "spot_capability_disabled"
+	CodeHedgeDisabled = "hedge_capability_disabled"
+)
+
 func requireLeg(provider, leg string, state LegState) error {
 	if state.EffectiveEnabled {
 		return nil
 	}
 	reasons := make([]string, 0, len(state.Blockers))
 	for _, blocker := range state.Blockers {
-		reasons = append(reasons, blocker.Message)
+		reasons = append(reasons, strings.TrimSpace(blocker.Message))
 	}
 	if len(reasons) == 0 {
-		reasons = append(reasons, "capability is unavailable")
+		reasons = append(reasons, "The exchange did not report this capability as available.")
 	}
-	return fmt.Errorf("%s %s capability is disabled: %s", provider, leg, strings.Join(reasons, "; "))
+	technical := fmt.Errorf("%s %s capability is disabled: %s", provider, leg, strings.Join(reasons, "; "))
+	if leg == "hedge" {
+		return apierror.Wrapf(technical, CodeHedgeDisabled,
+			"Hedging on %s isn't available to this bot. %s Fix it under Trading Accounts, or switch the liquidity target to hedgeless mode.", provider, strings.Join(reasons, " ")).
+			WithStatus(http.StatusConflict).WithLeg("hedge")
+	}
+	return apierror.Wrapf(technical, CodeSpotDisabled,
+		"Buying on %s isn't available to this bot. %s Fix it under Trading Accounts, or pick an offer whose route uses another exchange.", provider, strings.Join(reasons, " ")).
+		WithStatus(http.StatusConflict).WithLeg("spot")
 }
