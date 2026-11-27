@@ -5,8 +5,8 @@ go 1.26.8
 require (
 	github.com/alexedwards/scs/postgresstore v0.0.0-20261119174900-ed2e92329119
 	github.com/alexedwards/scs/v2 v2.9.0
-	github.com/binance/binance-connector-go/clients/derivativestradingusdsfutures v1.24.1
-	github.com/binance/binance-connector-go/clients/spot v1.20.0
+	github.com/binance/binance-connector-go/clients/derivativestradingusdsfutures v1.24.2
+	github.com/binance/binance-connector-go/clients/spot v1.21.0
 	github.com/binance/binance-connector-go/clients/wallet v1.19.0
 	github.com/binance/binance-connector-go/common/v2 v2.11.0
 	github.com/google/uuid v1.6.0
