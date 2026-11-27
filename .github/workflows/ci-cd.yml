@@ -249,6 +249,7 @@ jobs:
           bash deploy/test-transactional-deploy.sh
           DEPLOY_TEST_DIGEST=1 bash deploy/test-transactional-deploy.sh
           bash deploy/test-ci-activate.sh
+          bash deploy/test-prune-images.sh
 
   test-go:
     name: Go tests (${{ matrix.module }})
@@ -775,6 +776,12 @@ jobs:
             docker manifest inspect "$tag" >/dev/null
           done
 
+      - name: Check out the VPS image-prune script
+        uses: actions/checkout@v5
+        with:
+          sparse-checkout: deploy/prune-images.sh
+          sparse-checkout-cone-mode: false
+
       - name: Install SSH key & known_hosts
         env:
           SSH_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
@@ -794,16 +801,15 @@ jobs:
           REPO_DIR: ${{ secrets.VPS_REPO_DIR }}
         run: |
           set -Eeuo pipefail
+          # Before the disk guard. Keeps every container's image and the active and
+          # previous releases' images, so exact rollback still works.
+          ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" \
+            "bash -s -- --repo-dir '$REPO_DIR'" < deploy/prune-images.sh
           ssh -i ~/.ssh/id_ed25519 "$SSH_USER@$SSH_HOST" "REPO_DIR='$REPO_DIR' bash -s" <<'REMOTE'
           set -Eeuo pipefail
           docker info >/dev/null
           docker compose version >/dev/null
           test -d "$REPO_DIR" || { echo "missing repo dir $REPO_DIR on VPS"; exit 1; }
-          echo "Docker disk usage before unused-image prune:"
-          docker system df
-          # Active and previous release images are retained for exact rollback.
-          echo "Docker disk usage after unused-image prune:"
-          docker system df
           docker_root=$(docker info --format '{{.DockerRootDir}}' 2>/dev/null || echo /var/lib/docker)
           free_kb=$(df -P "$docker_root" | awk 'NR==2 {print $4}')
           [ "$free_kb" -gt 5242880 ] || { echo "low disk on $docker_root: $((free_kb/1024)) MB free, need >= 5120"; exit 1; }

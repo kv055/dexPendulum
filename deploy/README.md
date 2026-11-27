@@ -169,7 +169,9 @@ This folder contains secrets bootstrap scripts for the CI/CD pipeline.
 Tests and image builds run in GitHub Actions ([`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml)). The VPS only pulls pre-built images from GHCR and restarts the stack:
 
 1. The CI/CD workflow finishes a successful build and pushes images to `ghcr.io/<owner>/dexarbtrading-<service>:latest` (and `:<sha>`).
-2. The `pre-deploy` job verifies every image SHA tag is present in GHCR, then SSHes into the VPS to confirm docker, compose, disk, and memory are all healthy.
+2. The `pre-deploy` job verifies every image SHA tag is present in GHCR, then SSHes into the VPS,
+   prunes unused images with [`prune-images.sh`](prune-images.sh), and confirms docker, compose,
+   and disk (at least 5 GB free) are healthy.
 3. The `deploy` job stages decrypted env files, pushes the release commit into
    the VPS bare-ish checkout, then activates via [`ci-activate.sh`](ci-activate.sh):
    the transactional deploy runs **detached** on the VPS and CI polls
@@ -177,6 +179,13 @@ Tests and image builds run in GitHub Actions ([`.github/workflows/ci-cd.yml`](..
    avoids false failures when a long-lived SSH pipe hangs after a successful
    rollout. Run artifacts: `.deploy/runs/<sha>/{pid,deploy.log,result}`.
 4. Post-activate cleanup removes staging only when that SHA is not still running.
+
+`prune-images.sh` deletes every image except those used by a container (running or stopped)
+and those the retained releases under `.deploy/releases` reference: the active and previous
+release, so exact rollback keeps working offline. `docker image prune -a` would delete the
+previous release's images. A healthy deploy runs it again after trimming old releases, and
+it skips while another deployment holds `.deploy/deploy.lock`. Preview it on the VPS with
+`bash deploy/prune-images.sh --repo-dir /opt/dexArbTrading --dry-run`.
 
 Activation starts Postgres, runs `unified-api ./server migrate` from the pinned
 candidate image with the staged environment, then starts the app services. A
