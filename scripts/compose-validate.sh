@@ -66,6 +66,9 @@ CONFIG="$(docker compose -f "$COMPOSE_FILE" config 2>/dev/null)"
 # DNS/TLS material and an IMAP credential. Validate its topology separately
 # while keeping the normal render free of unprovisioned mail services.
 MAIL_CONFIG="$(COMPOSE_PROFILES=mail MADDY_HOSTNAME=mx.example.test MADDY_DOMAIN=example.test MADDY_RECIPIENT=payments@example.test MADDY_IMAP_PASSWORD=validation-password docker compose -f "$COMPOSE_FILE" config 2>/dev/null)"
+# The co-hosted public monitor is likewise opt-in (profile "public"): validate
+# its restricted shape separately while the default render stays unchanged.
+PUBLIC_CONFIG="$(COMPOSE_PROFILES=public docker compose -f "$COMPOSE_FILE" config 2>/dev/null)"
 
 fail=0
 
@@ -117,6 +120,40 @@ assert_in_service() {
 	else
 		echo "✖ $label (missing in $service: $needle)" >&2
 		fail=1
+	fi
+}
+
+# assert_in_public_service is assert_in_service against the COMPOSE_PROFILES
+# render (the co-hosted public monitor only exists there).
+assert_in_public_service() {
+	local label="$1" service="$2" needle="$3"
+	local block
+	block=$(awk -v svc="  ${service}:" '
+		$0 == svc { inblk=1; print; next }
+		inblk && /^  [A-Za-z][A-Za-z0-9_-]*:$/ { inblk=0 }
+		inblk { print }
+	' <<<"$PUBLIC_CONFIG")
+	if grep -qF -- "$needle" <<<"$block"; then
+		echo "✓ $label"
+	else
+		echo "✖ $label (missing in $service: $needle)" >&2
+		fail=1
+	fi
+}
+
+assert_absent_in_public_service() {
+	local label="$1" service="$2" needle="$3"
+	local block
+	block=$(awk -v svc="  ${service}:" '
+		$0 == svc { inblk=1; print; next }
+		inblk && /^  [A-Za-z][A-Za-z0-9_-]*:$/ { inblk=0 }
+		inblk { print }
+	' <<<"$PUBLIC_CONFIG")
+	if grep -qF -- "$needle" <<<"$block"; then
+		echo "✖ $label (forbidden but present in $service: $needle)" >&2
+		fail=1
+	else
+		echo "✓ $label"
 	fi
 }
 
@@ -184,6 +221,57 @@ else
 	echo "✓ no SMTP submission port 587"
 fi
 assert_in_service "fiat-controller uses dedicated payment IMAP settings" "fiat-controller" "PAYMENT_EMAIL_IMAP_HOST: maddy"
+
+# --- Co-hosted public monitor (profile "public") --------------------------
+# Off by default: the default render must not contain the public instance at
+# all, so a profile-less deployment is byte-for-byte the trading stack.
+if grep -qE '^  dexmonitor-public:$' <<<"$CONFIG"; then
+	echo "✖ dexmonitor-public renders without the public profile" >&2
+	fail=1
+else
+	echo "✓ dexmonitor-public is off without the public profile"
+fi
+assert_absent "no PUBLIC_EDITION without the public profile" "PUBLIC_EDITION"
+
+# On with the profile: restricted role, no secrets, shared images only.
+if grep -qE '^  dexmonitor-public:$' <<<"$PUBLIC_CONFIG"; then
+	echo "✓ dexmonitor-public renders with the public profile"
+else
+	echo "✖ dexmonitor-public is missing from the public profile render" >&2
+	fail=1
+fi
+assert_in_public_service "public instance runs PUBLIC_EDITION=true"          "dexmonitor-public" 'PUBLIC_EDITION: "true"'
+assert_in_public_service "public instance connects as dex_monitor_public"    "dexmonitor-public" "DATABASE_URL: postgres://dex_monitor_public:"
+assert_in_public_service "public instance shares the operator tor"           "dexmonitor-public" "TOR_PROXY_ADDR: tor:9050"
+# The release digest tooling pins dexmonitor-public as an alias of dexmonitor
+# only when both resolve the same image reference.
+if [ "$(awk '/^  dexmonitor:$/{f=1} f&&/^    image:/{print; exit}' <<<"$PUBLIC_CONFIG")" = \
+	"$(awk '/^  dexmonitor-public:$/{f=1} f&&/^    image:/{print; exit}' <<<"$PUBLIC_CONFIG")" ]; then
+	echo "✓ dexmonitor-public shares the dexmonitor image reference"
+else
+	echo "✖ dexmonitor-public must reuse the exact dexmonitor image reference" >&2
+	fail=1
+fi
+# No operator secrets may reach the public instance.
+assert_absent_in_public_service "public instance has no internal API secret"  "dexmonitor-public" "INTERNAL_API_SECRET"
+assert_absent_in_public_service "public instance has no encryption key"       "dexmonitor-public" "APP_ENCRYPTION_KEY"
+assert_absent_in_public_service "public instance has no Bisq credentials"     "dexmonitor-public" "BISQ_API_PASSWORD"
+assert_absent_in_public_service "public instance has no mm-controller URL"    "dexmonitor-public" "MM_CONTROLLER_API_URL"
+assert_absent_in_public_service "public instance has no fiat-controller URL"  "dexmonitor-public" "FIAT_CONTROLLER_URL"
+assert_absent_in_public_service "public instance has no push secrets"         "dexmonitor-public" "PUSHPUSH_NOTIFY_SECRET"
+# Loopback-only publish: nothing forwards to it publicly until a domain edge
+# exists.
+if awk '/^  dexmonitor-public:$/{f=1; next} f&&/^  [a-z]/{exit} f&&/host_ip:/{print; exit}' <<<"$PUBLIC_CONFIG" | grep -q 'host_ip: 127.0.0.1'; then
+	echo "✓ dexmonitor-public publishes on loopback only"
+else
+	echo "✖ dexmonitor-public must publish on loopback only" >&2
+	fail=1
+fi
+
+# unified-api carries the co-host hooks with safe empty defaults.
+assert_in_service "unified-api PUBLIC_LISTEN_ADDR wired (empty default)"      "unified-api" 'PUBLIC_LISTEN_ADDR: ""'
+assert_in_service "unified-api POSTGRES_MONITOR_PUBLIC_PASSWORD wired"        "unified-api" 'POSTGRES_MONITOR_PUBLIC_PASSWORD: ""'
+
 
 if [ "$fail" -ne 0 ]; then
 	echo >&2

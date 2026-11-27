@@ -31,6 +31,13 @@ type Config struct {
 	// prod (HTTPS); set false only for local HTTP dev, where browsers drop Secure
 	// cookies served over http:// and the session would never persist.
 	CookieSecure bool
+
+	// DisableCleanup stops the store's background cleanup goroutine, which
+	// otherwise runs DELETE FROM sessions every 5 minutes. Set it for
+	// deployments whose DB role cannot write the sessions table (e.g. the
+	// read-only public monitor): they never create sessions, and the instance
+	// that owns the sessions table runs its own cleanup.
+	DisableCleanup bool
 }
 
 // Manager is the shared session manager. It embeds *scs.SessionManager, so
@@ -44,7 +51,12 @@ type Manager struct {
 // exist (dexUnifiedApi migration 026).
 func NewManager(db *sql.DB, cfg Config) *Manager {
 	sm := scs.New()
-	sm.Store = postgresstore.New(db)
+	if cfg.DisableCleanup {
+		// 0 interval = no background cleanup goroutine.
+		sm.Store = postgresstore.NewWithCleanupInterval(db, 0)
+	} else {
+		sm.Store = postgresstore.New(db)
+	}
 	sm.Lifetime = 100 * 365 * 24 * time.Hour // effectively forever
 	sm.Cookie.Name = "dex_session"
 	sm.Cookie.HttpOnly = true

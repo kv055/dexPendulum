@@ -220,6 +220,17 @@ services:
       - BISQ2_API_PASSWORD=${BISQ2_API_PASSWORD:-}
       - ACCOUNT_HEALTH_INTERVAL=${ACCOUNT_HEALTH_INTERVAL:-10m}
       - MM_CEX_CAPABILITY_MAX_AGE=${MM_CEX_CAPABILITY_MAX_AGE:-30m}
+      # Co-hosted public monitor (see deploy/public/README.md): with
+      # PUBLIC_LISTEN_ADDR set (e.g. :5011) the container serves a second,
+      # session-less read-only listener for the public edge's live-offer
+      # routes; nothing publishes the port, only the public nginx server
+      # block would proxy to it. With POSTGRES_MONITOR_PUBLIC_PASSWORD set,
+      # startup additionally reconciles the restricted dex_monitor_public
+      # role the public dexMonitor connects as. Both default empty: prod
+      # behaviour is unchanged until the operator enables the public
+      # monitor.
+      - PUBLIC_LISTEN_ADDR=${PUBLIC_LISTEN_ADDR:-}
+      - POSTGRES_MONITOR_PUBLIC_PASSWORD=${POSTGRES_MONITOR_PUBLIC_PASSWORD:-}
       - COINBASE_WITHDRAW_RESERVE_FLOOR_SAT=${COINBASE_WITHDRAW_RESERVE_FLOOR_SAT:-10000}
       - COINBASE_WITHDRAW_RESERVE_MULTIPLIER=${COINBASE_WITHDRAW_RESERVE_MULTIPLIER:-2}
       # OpenTelemetry: traces -> Alloy -> Tempo; structured logs scraped from stdout.
@@ -430,6 +441,71 @@ services:
     ports:
       - "127.0.0.1:5002:5000"
     restart: unless-stopped
+
+  # Co-hosted public monitor (profile "public", off until COMPOSE_PROFILES in
+  # the root .env enables it — see deploy/public/README.md). Same dexMonitor
+  # image as the operator dashboard, but PUBLIC_EDITION=true: it opens only the
+  # dex Monitor and Statistics read routes without a login, hides every other
+  # tab in the frontend, and never touches the Taker/Fiat controllers. It
+  # connects as the restricted dex_monitor_public role (reconciled by
+  # unified-api from POSTGRES_MONITOR_PUBLIC_PASSWORD), which can read the
+  # market tables and four non-secret capability columns and nothing else —
+  # no sessions, no settings, no keys, no writes. No secrets are passed in:
+  # no INTERNAL_API_SECRET, no APP_ENCRYPTION_KEY, no Bisq credentials.
+  # Pricing works co-hosted because the real taker controller keeps the
+  # capability checks and fee tables fresh; MM_CEX_CAPABILITY_MAX_AGE keeps
+  # the operator default. Tor is shared (tor:9050) for the mempool/RoboSats
+  # fee fetches; Postgres, unified-api and (later) the nginx edge are shared
+  # too — nothing is duplicated. Reuses the dexmonitor image exactly, so the
+  # release digest tooling pins it as an alias of dexmonitor.
+  dexmonitor-public:
+    <<: *hardened
+    logging: *default-logging
+    profiles: ["public"]
+    image: ${IMAGE_REGISTRY:-ghcr.io}/${IMAGE_OWNER:-kv055}/dexarbtrading-dexmonitor:${DEXMONITOR_IMAGE_TAG:-${IMAGE_TAG:-latest}}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      tor:
+        condition: service_healthy
+    environment:
+      - PUBLIC_EDITION=true
+      # Restricted role; the password arrives from the root .env. With the
+      # profile enabled but the password unset, auth fails and the
+      # healthcheck (and a transactional deploy) fails loudly instead.
+      - DATABASE_URL=postgres://dex_monitor_public:${POSTGRES_MONITOR_PUBLIC_PASSWORD:-}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      - SNAPSHOT_INTERVAL_MIN=${SNAPSHOT_INTERVAL_MIN:-1}
+      - FRONTEND_DIR=/app/react-frontend/dist
+      # Operator default: co-hosted, the taker controller refreshes the
+      # permission checks this store routes through.
+      - MM_CEX_CAPABILITY_MAX_AGE=${MM_CEX_CAPABILITY_MAX_AGE:-30m}
+      - TOR_PROXY_ADDR=tor:9050
+      # OpenTelemetry: traces -> Alloy -> Tempo; structured logs scraped from stdout.
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-alloy:4317}
+      - OTEL_SERVICE_NAME=dexmonitor-public
+      - OTEL_TRACES_SAMPLER_ARG=${OTEL_TRACES_SAMPLER_ARG:-1.0}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - DEPLOY_ENV=${DEPLOY_ENV:-production}
+    ports:
+      # Loopback preview for the operator (SSH tunnel / tailscale serve);
+      # nothing forwards to it publicly until a domain exists.
+      - "127.0.0.1:5003:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          # Same analytics workload class as the operator dashboard (which
+          # OOM-killed at 256M). The nginx edge (when it exists) caps
+          # analytics at 4 in flight and caches for 60s.
+          memory: 512M
+          cpus: '0.5'
+    restart: unless-stopped
+
 
   nginx:
     logging: *default-logging
