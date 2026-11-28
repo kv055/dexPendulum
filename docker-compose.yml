@@ -1091,7 +1091,7 @@ services:
   # behind the docs profile and bound to loopback because internal/admin routes
   # are included in the bundled contracts.
   api-docs:
-    image: swaggerapi/swagger-ui:v5.35.1
+    image: swaggerapi/swagger-ui:v5.36.0
     profiles:
       - docs
     environment:
